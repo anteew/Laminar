@@ -6,15 +6,21 @@ on:
 
 jobs:
   github-install-e2e:
-    runs-on: ubuntu-latest
+    name: GitHub Install E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: [24]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Build Laminar
         run: |
@@ -75,12 +81,22 @@ jobs:
         env:
           LAMINAR_REPORTER_PATH: ${{ env.REPORTER }}
         run: |
-          npx lam init
-          npx vitest run --reporter="$LAMINAR_REPORTER_PATH"
-          npx lam summary
+          set -euo pipefail
+          npx lam init 2>&1 | tee -a lam-init.log
+          npx vitest run --reporter="$LAMINAR_REPORTER_PATH" 2>&1 | tee -a vitest.log
+          npx lam summary 2>&1 | tee -a lam-summary.log
 
       - name: Validate artifacts
         working-directory: /tmp/laminar-consumer
         run: |
           test -f reports/summary.jsonl
           ls -R reports || true
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-validate-${{ matrix.os }}-node${{ matrix.node-version }}
+          path: |
+            /tmp/laminar-consumer/reports
+            /tmp/laminar-consumer/*.log
+          retention-days: 7
