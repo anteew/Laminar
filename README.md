@@ -73,14 +73,6 @@ If installed locally (from GitHub):
 npx lam --help
 ```
 
-If installed from private registry:
-
-```bash
-npm exec lam -- --help
-# or
-npx -p @agent_vega/laminar lam --help
-```
-
 ## Vitest Integration
 
 Configure Laminar as a Vitest reporter:
