@@ -44,7 +44,7 @@ jobs:
         id: reporter
         working-directory: /tmp/laminar-consumer
         run: |
-          node -e "let p; try { p=require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js'); } catch(e) { try { p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js'); } catch(e2) { console.error('Unable to resolve reporter path'); process.exit(2); } } console.log('REPORTER='+p)" >> $GITHUB_ENV
+          node -e "const fs=require('fs'); const path=require('path'); let p=null; function ok(c){return fs.existsSync(c)}; try{p=require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js')}catch{}; if(!p){try{p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js')}catch{}}; if(!p){const candidates=[ './node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js', './node_modules/laminar/dist/src/test/reporter/jsonlReporter.js', './node_modules/Laminar/dist/src/test/reporter/jsonlReporter.js' ].map(x=>path.resolve(process.cwd(), x)); for(const c of candidates){ if(ok(c)){ p=c; break; } } } if(!p){ console.error('Unable to resolve reporter path'); process.exit(2); } console.log('REPORTER='+p)" >> $GITHUB_ENV
           echo "Reporter is: $REPORTER"
 
       - name: Run Laminar
