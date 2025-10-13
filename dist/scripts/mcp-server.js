@@ -18,6 +18,43 @@
  *   }
  * }
  */
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`
+Laminar MCP Server
+
+A stdio-based Model Context Protocol (MCP) server that exposes Laminar's
+test observability tools to AI agents like Claude Desktop.
+
+Usage:
+  laminar-mcp                    Start the MCP server (stdio mode)
+  laminar-mcp --help            Show this help message
+
+Configuration:
+  For Claude Desktop, add to ~/Library/Application Support/Claude/claude_desktop_config.json:
+  {
+    "mcpServers": {
+      "laminar": {
+        "command": "npx",
+        "args": ["laminar-mcp"]
+      }
+    }
+  }
+
+  Or with a local installation:
+  {
+    "mcpServers": {
+      "laminar": {
+        "command": "node",
+        "args": ["/path/to/node_modules/.bin/laminar-mcp"]
+      }
+    }
+  }
+
+Documentation:
+  https://github.com/anteew/Laminar/blob/main/docs/mcp-integration.md
+`);
+    process.exit(0);
+}
 import { createLaminarServer } from '../src/mcp/server.js';
 class MCPStdioServer {
     server = createLaminarServer();
