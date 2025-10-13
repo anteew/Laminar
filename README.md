@@ -14,20 +14,27 @@ Laminar transforms your test suite into a structured, queryable knowledge base w
 
 ## Quick Start
 
-```bash
+```bash runnable
 # 1. Install from GitHub
 npm install -D github:anteew/Laminar
 
 # 2. Initialize configuration
 npx lam init
 
-# 3. Run tests
+# 3. View help
+npx lam --help
+```
+
+Once installed, use Laminar with your tests:
+
+```bash
+# 4. Run tests
 npx lam run --lane auto
 
-# 4. View results
+# 5. View results
 npx lam summary
 
-# 5. Analyze failures
+# 6. Analyze failures
 npx lam digest
 ```
 
@@ -36,9 +43,12 @@ npx lam digest
 ### Install Modes
 
 1) GitHub (recommended)
-```bash
+```bash runnable
 npm install -D github:anteew/Laminar
-# Or specific tag/commit
+```
+
+Or specific tag/commit:
+```bash
 npm install -D github:anteew/Laminar#v0.1.9
 npm install -D github:anteew/Laminar#<commit>
 ```
@@ -57,17 +67,28 @@ The repository includes pre-built dist files so no postinstall build is required
 
 ## CLI Usage
 
-If installed locally (from GitHub):
+Laminar provides two binaries:
+- **`lam`** - Main CLI for test execution and analysis
+- **`laminar-mcp`** - MCP (Model Context Protocol) server for AI agent integration
 
-```bash
+Run the main CLI:
+
+```bash runnable
 npx lam --help
 ```
 
 ## Vitest Integration
 
-Configure Laminar as a Vitest reporter. Prefer require.resolve so it works across install modes.
+Configure Laminar as a Vitest reporter in your `package.json`.
 
-- package.json script (GitHub install)
+### GitHub Install (Recommended)
+
+When installed from GitHub, the reporter path is:
+```
+node_modules/laminar/dist/src/test/reporter/jsonlReporter.js
+```
+
+Add a `test:ci` script to your `package.json`:
 ```json
 {
   "scripts": {
@@ -76,7 +97,11 @@ Configure Laminar as a Vitest reporter. Prefer require.resolve so it works acros
 }
 ```
 
-- package.json script (scoped install)
+**Note**: The `test:ci` script is required for `lam run --lane ci` to work correctly.
+
+### Scoped npm Install
+
+If using the scoped package:
 ```json
 {
   "scripts": {
@@ -85,7 +110,9 @@ Configure Laminar as a Vitest reporter. Prefer require.resolve so it works acros
 }
 ```
 
-- vitest.config.ts
+### vitest.config.ts
+
+Alternatively, configure in `vitest.config.ts`:
 ```ts
 import { defineConfig } from 'vitest/config';
 export default defineConfig({
@@ -97,7 +124,7 @@ export default defineConfig({
 });
 ```
 
-Advanced: override with LAMINAR_REPORTER_PATH=/abs/path/to/jsonlReporter.js
+Advanced: override with `LAMINAR_REPORTER_PATH=/abs/path/to/jsonlReporter.js`
 
 ## Documentation
 

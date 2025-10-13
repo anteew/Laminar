@@ -4,19 +4,41 @@ Complete reference for the `lam` command-line interface.
 
 ## Installation
 
-The `lam` CLI is included when you install Laminar:
+The `lam` CLI is included when you install Laminar.
+
+### Recommended: GitHub Install
+
+```bash runnable
+# Install as dev dependency
+npm install -D github:anteew/Laminar
+
+# Use with npx
+npx lam --help
+```
+
+### Alternative: npm Scoped Package
 
 ```bash
-# Install as dev dependency (recommended)
+# Install from npm (when available)
 npm install -D @agent_vega/laminar
 
 # Use with npx
 npx lam --help
+```
 
-# Or install globally
-npm install -g @agent_vega/laminar
+### Global Install
+
+```bash
+# Install globally (optional)
+npm install -g github:anteew/Laminar
 lam --help
 ```
+
+### Available Binaries
+
+After installation, you have access to:
+- **`lam`** - Main CLI for test execution and analysis
+- **`laminar-mcp`** - MCP (Model Context Protocol) server for AI agent integration
 
 ## Command Overview
 
@@ -244,6 +266,7 @@ The `--lane` option controls how tests are executed:
 - Runs `npm run test:ci`
 - Headless, non-interactive
 - Optimized for automation
+- **Requires**: A `test:ci` script in your `package.json` (see Vitest Integration section)
 
 **pty**: PTY (pseudo-terminal) mode
 - Runs `npm run test:pty`
@@ -746,6 +769,53 @@ lam ingest --junit <file>
 ```bash
 lam ingest --junit test-results.xml
 ```
+
+## Vitest Integration
+
+To use Laminar with Vitest, you need to configure the JSONL reporter in your test scripts.
+
+### GitHub Install
+
+When installed from GitHub (`npm install -D github:anteew/Laminar`), the reporter path is:
+```
+node_modules/laminar/dist/src/test/reporter/jsonlReporter.js
+```
+
+Add a `test:ci` script to your `package.json`:
+```json
+{
+  "scripts": {
+    "test:ci": "PKG='laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
+  }
+}
+```
+
+### Scoped npm Install
+
+If using the scoped package (`@agent_vega/laminar`):
+```json
+{
+  "scripts": {
+    "test:ci": "PKG='@agent_vega/laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
+  }
+}
+```
+
+### vitest.config.ts
+
+Alternatively, configure in `vitest.config.ts`:
+```ts
+import { defineConfig } from 'vitest/config';
+export default defineConfig({
+  test: {
+    reporters: [
+      require.resolve(`${process.env.LAMINAR_PKG || 'laminar'}/dist/src/test/reporter/jsonlReporter.js`)
+    ]
+  }
+});
+```
+
+Advanced: override with `LAMINAR_REPORTER_PATH=/abs/path/to/jsonlReporter.js`
 
 ## Environment Variables
 
