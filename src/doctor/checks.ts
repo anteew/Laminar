@@ -96,14 +96,18 @@ export function checkBinSymlinks(): CheckResult {
 }
 
 export function checkDistPresence(): CheckResult {
-  const distPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist');
+  let distPath = path.join(process.cwd(), 'node_modules', 'laminar', 'dist');
+  
+  if (!fs.existsSync(distPath)) {
+    distPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist');
+  }
   
   if (!fs.existsSync(distPath)) {
     return {
       name: 'Dist Directory',
       passed: false,
       message: 'dist/ directory not found in package',
-      fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+      fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
       critical: true,
     };
   }
@@ -129,13 +133,33 @@ export function checkDistPresence(): CheckResult {
     name: 'Dist Directory',
     passed: false,
     message: `Missing dist files: ${missing.join(', ')}`,
-    fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+    fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
     critical: true,
   };
 }
 
 export function checkReporterPath(): CheckResult {
-  const reporterPath = path.join(
+  let reporterPath = path.join(
+    process.cwd(),
+    'node_modules',
+    'laminar',
+    'dist',
+    'src',
+    'test',
+    'reporter',
+    'jsonlReporter.js'
+  );
+  
+  if (fs.existsSync(reporterPath)) {
+    return {
+      name: 'Reporter File',
+      passed: true,
+      message: `Reporter found at ${reporterPath}`,
+      critical: false,
+    };
+  }
+  
+  reporterPath = path.join(
     process.cwd(),
     'node_modules',
     '@agent_vega',
@@ -170,7 +194,7 @@ export function checkReporterPath(): CheckResult {
     name: 'Reporter File',
     passed: false,
     message: 'jsonlReporter.js not found',
-    fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+    fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
     critical: true,
   };
 }

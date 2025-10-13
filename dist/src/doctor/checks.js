@@ -75,13 +75,16 @@ export function checkBinSymlinks() {
     };
 }
 export function checkDistPresence() {
-    const distPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist');
+    let distPath = path.join(process.cwd(), 'node_modules', 'laminar', 'dist');
+    if (!fs.existsSync(distPath)) {
+        distPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist');
+    }
     if (!fs.existsSync(distPath)) {
         return {
             name: 'Dist Directory',
             passed: false,
             message: 'dist/ directory not found in package',
-            fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+            fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
             critical: true,
         };
     }
@@ -103,12 +106,21 @@ export function checkDistPresence() {
         name: 'Dist Directory',
         passed: false,
         message: `Missing dist files: ${missing.join(', ')}`,
-        fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+        fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
         critical: true,
     };
 }
 export function checkReporterPath() {
-    const reporterPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist', 'src', 'test', 'reporter', 'jsonlReporter.js');
+    let reporterPath = path.join(process.cwd(), 'node_modules', 'laminar', 'dist', 'src', 'test', 'reporter', 'jsonlReporter.js');
+    if (fs.existsSync(reporterPath)) {
+        return {
+            name: 'Reporter File',
+            passed: true,
+            message: `Reporter found at ${reporterPath}`,
+            critical: false,
+        };
+    }
+    reporterPath = path.join(process.cwd(), 'node_modules', '@agent_vega', 'laminar', 'dist', 'src', 'test', 'reporter', 'jsonlReporter.js');
     if (fs.existsSync(reporterPath)) {
         return {
             name: 'Reporter File',
@@ -130,7 +142,7 @@ export function checkReporterPath() {
         name: 'Reporter File',
         passed: false,
         message: 'jsonlReporter.js not found',
-        fix: 'Reinstall Laminar: npm install -D @agent_vega/laminar',
+        fix: 'Reinstall Laminar: npm install -D github:anteew/Laminar',
         critical: true,
     };
 }
