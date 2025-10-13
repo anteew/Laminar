@@ -1,93 +1,10 @@
-name: CI • Pack → Install (Node 24 macOS/Linux)
+name: Deprecated • Pack → Install (use Test Package Installation)
 
 on:
-  push:
-    branches:
-      - main
-      - 'devin/**'
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  pack-install:
-    name: node${{ matrix.node }} • ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        node: [24]
-    timeout-minutes: 15
-    env:
-      CI: true
-
+  noop:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci || npm install
-
-      - name: Build
-        run: npm run build
-
-      - name: Pack tarball
-        id: pack
-        run: |
-          set -euo pipefail
-          TARBALL_JSON=$(npm pack --json)
-          echo "$TARBALL_JSON"
-          TARBALL=$(echo "$TARBALL_JSON" | node -e "process.stdin.on('data',d=>{const j=JSON.parse(d.toString());console.log(j[0].filename)})")
-          echo "TARBALL=$TARBALL" >> "$GITHUB_OUTPUT"
-          ls -la "$TARBALL"
-
-      - name: Create temp project and install tarball
-        run: |
-          set -euo pipefail
-          WORKDIR=$(pwd -P)
-          TMPDIR="/tmp/laminar-pack-install"
-          rm -rf "$TMPDIR"
-          mkdir -p "$TMPDIR"
-          cd "$TMPDIR"
-          npm init -y
-          npm install "$WORKDIR/${{ steps.pack.outputs.TARBALL }}"
-          npm ls --depth=0 || true
-          ls -la node_modules/.bin || true
-
-      - name: Verify CLI help
-        run: |
-          set -euo pipefail
-          cd /tmp/laminar-pack-install
-          npx lam --help
-
-      - name: Sanity: init dry-run and rules get
-        run: |
-          set -euo pipefail
-          cd /tmp/laminar-pack-install
-          npx lam init --dry-run
-          npx lam rules get
-
-      - name: Verify module resolution
-        run: |
-          set -euo pipefail
-          cd /tmp/laminar-pack-install
-          node -e "console.log(require.resolve('@agent_vega/laminar/package.json'))"
-
-      - name: Upload debug artifacts on failure
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pack-install-debug-${{ matrix.os }}-node${{ matrix.node }}
-          path: |
-            /tmp/laminar-pack-install/npm-debug.log
-            /tmp/laminar-pack-install/package.json
-            /tmp/laminar-pack-install/node_modules/.bin
-            ${{ steps.pack.outputs.TARBALL }}
-          if-no-files-found: ignore
+      - run: echo "This workflow is deprecated. Use 'Test Package Installation' instead."
