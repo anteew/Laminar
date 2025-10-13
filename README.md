@@ -25,6 +25,19 @@ npx lam init
 npx lam --help
 ```
 
+Once installed, use Laminar with your tests:
+
+```bash
+# 4. Run tests
+npx lam run --lane auto
+
+# 5. View results
+npx lam summary
+
+# 6. Analyze failures
+npx lam digest
+```
+
 ## Installation
 
 ### Install Modes
