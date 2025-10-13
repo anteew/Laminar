@@ -30,6 +30,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:watch": "vitest",
     "lam": "node dist/scripts/lam.js",
     "prepublishOnly": "npm run build"
   },
