@@ -1,0 +1,135 @@
+# This workflow tests the actual user journey: installing from GitHub
+# This is critical because it catches issues that only happen when users
+# install with: npm install -D github:anteew/Laminar
+
+name: Test GitHub Installation
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test-github-install:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Create a fresh test directory that simulates a user's project
+      - name: Create test project
+        run: |
+          mkdir -p /tmp/test-project
+          cd /tmp/test-project
+          npm init -y
+
+      # Test installing from the current branch/commit
+      # This simulates: npm install -D github:anteew/Laminar#branch-name
+      - name: Install package from GitHub (current commit)
+        run: |
+          cd /tmp/test-project
+          npm install -D $GITHUB_WORKSPACE
+
+      # Verify package.json exists in installed package
+      - name: Verify package.json exists in installation
+        run: |
+          if [ ! -f /tmp/test-project/node_modules/@agent_vega/laminar/package.json ]; then
+            echo "ERROR: package.json missing from installed package!"
+            exit 1
+          fi
+          echo "✓ package.json found in installation"
+
+      # Verify dist files exist
+      - name: Verify dist files exist
+        run: |
+          if [ ! -f /tmp/test-project/node_modules/@agent_vega/laminar/dist/scripts/lam.js ]; then
+            echo "ERROR: dist/scripts/lam.js missing!"
+            exit 1
+          fi
+          if [ ! -f /tmp/test-project/node_modules/@agent_vega/laminar/dist/scripts/mcp-server.js ]; then
+            echo "ERROR: dist/scripts/mcp-server.js missing!"
+            exit 1
+          fi
+          echo "✓ All required dist files found"
+
+      # Test lam command works
+      - name: Test lam command
+        run: |
+          cd /tmp/test-project
+          npx lam --help
+          if [ $? -ne 0 ]; then
+            echo "ERROR: lam command failed!"
+            exit 1
+          fi
+          echo "✓ lam command works"
+
+      # Test laminar-mcp command works
+      - name: Test laminar-mcp command
+        run: |
+          cd /tmp/test-project
+          timeout 5 npx laminar-mcp --help || exit_code=$?
+          # laminar-mcp might hang waiting for input, so we timeout
+          # Exit codes: 0 = success, 124 = timeout (expected for MCP server), anything else = error
+          if [ $exit_code -ne 0 ] && [ $exit_code -ne 124 ]; then
+            echo "ERROR: laminar-mcp command failed with exit code $exit_code"
+            exit 1
+          fi
+          echo "✓ laminar-mcp command executable"
+
+      # Test that lam init works
+      - name: Test lam init
+        run: |
+          cd /tmp/test-project
+          npx lam init --template minimal
+          if [ ! -f laminar.config.json ]; then
+            echo "ERROR: lam init failed to create config!"
+            exit 1
+          fi
+          echo "✓ lam init works"
+
+      # Verify all bin symlinks are valid
+      - name: Verify bin symlinks
+        run: |
+          cd /tmp/test-project
+          # Find where the bin symlinks point
+          LAM_BIN=$(readlink -f node_modules/.bin/lam)
+          MCP_BIN=$(readlink -f node_modules/.bin/laminar-mcp)
+          
+          echo "lam symlink points to: $LAM_BIN"
+          echo "laminar-mcp symlink points to: $MCP_BIN"
+          
+          if [ ! -f "$LAM_BIN" ]; then
+            echo "ERROR: lam symlink points to non-existent file!"
+            exit 1
+          fi
+          
+          if [ ! -f "$MCP_BIN" ]; then
+            echo "ERROR: laminar-mcp symlink points to non-existent file!"
+            exit 1
+          fi
+          
+          echo "✓ All bin symlinks valid"
+
+      # List installed package contents for debugging
+      - name: Debug - List package contents
+        if: failure()
+        run: |
+          echo "=== Installed package contents ==="
+          ls -laR /tmp/test-project/node_modules/@agent_vega/laminar/
+          
+          echo "=== Package.json location ==="
+          find /tmp/test-project/node_modules/@agent_vega/laminar -name "package.json"
+          
+          echo "=== JavaScript files ==="
+          find /tmp/test-project/node_modules/@agent_vega/laminar -name "*.js" | head -20

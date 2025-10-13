@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-dist/
+# dist/ - Committed to support GitHub installs
 
 # Logs
 *.log

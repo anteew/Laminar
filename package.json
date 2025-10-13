@@ -23,15 +23,15 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist/", "README.md", "LICENSE", "docs/"],
+  "files": ["dist/", "package.json", "README.md", "LICENSE", "docs/"],
   "publishConfig": {
     "access": "restricted"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postinstall": "npm run build || true",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "bash tests/e2e/install-test.sh",
     "lam": "node dist/scripts/lam.js",
     "prepublishOnly": "npm run build"
   },
