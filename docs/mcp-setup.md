@@ -32,6 +32,39 @@ npm run build
 ls dist/scripts/mcp-server.js
 ```
 
+**What happens during build:**
+
+When you run `npm run build`, TypeScript compiles all source files from `src/` and `scripts/` into JavaScript in the `dist/` directory:
+
+```
+Laminar/
+├── scripts/               # TypeScript source
+│   └── mcp-server.ts
+├── src/                   # TypeScript source
+│   ├── mcp/
+│   │   └── server.ts
+│   ├── digest/
+│   └── ...
+└── dist/                  # Compiled JavaScript (created by build)
+    ├── scripts/
+    │   └── mcp-server.js  ← MCP server entry point
+    └── src/
+        ├── mcp/
+        │   └── server.js  ← Imported by mcp-server.js
+        ├── digest/
+        └── ...
+```
+
+The MCP server uses **relative imports** to find the rest of Laminar:
+
+```typescript
+// In scripts/mcp-server.ts
+import { createLaminarServer } from '../src/mcp/server.js';
+                                   // ↑ Go up to dist/, then down to src/mcp/
+```
+
+After compilation, everything stays in the same relative structure, so `dist/scripts/mcp-server.js` can import `dist/src/mcp/server.js` using the same `../src/mcp/server.js` path. This is why the MCP server "just works" after building - all the compiled code knows how to find each other!
+
 ### 2. Configure Claude Desktop
 
 Edit your Claude Desktop config file:
