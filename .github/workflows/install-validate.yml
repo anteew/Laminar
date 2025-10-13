@@ -1,0 +1,105 @@
+name: Install Validate (GitHub install)
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  github-install-e2e:
+    name: GitHub Install E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [24]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Build Laminar
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create temp consumer project
+        run: |
+          mkdir -p /tmp/laminar-consumer && cd /tmp/laminar-consumer
+          npm init -y
+          npm install -D vitest@1
+          echo "export default { test: { } }" > vitest.config.mjs
+          mkdir -p tests
+          cat > tests/smoke.spec.ts << 'EOF'
+          import { describe, it, expect } from 'vitest';
+          describe('smoke', () => {
+            it('works', () => { expect(1+1).toBe(2); });
+          });
+          EOF
+
+      - name: Install Laminar from GitHub
+        working-directory: /tmp/laminar-consumer
+        run: |
+          npm install -D github:anteew/Laminar
+
+      - name: Resolve reporter path
+        id: reporter
+        working-directory: /tmp/laminar-consumer
+        run: |
+          node -e "
+            const fs=require('fs'), path=require('path');
+            function search(dir){
+              try{
+                const ents=fs.readdirSync(dir,{withFileTypes:true});
+                for(const ent of ents){
+                  const full=path.join(dir, ent.name);
+                  if(ent.isDirectory()){
+                    const cand=path.join(full, 'dist/src/test/reporter/jsonlReporter.js');
+                    if(fs.existsSync(cand)) return cand;
+                    const res=search(full);
+                    if(res) return res;
+                  }
+                }
+              }catch{}
+              return null;
+            }
+            let p=null;
+            try{ p=require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js'); }catch{}
+            if(!p){ try{ p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js'); }catch{} }
+            if(!p){ p=search(path.resolve(process.cwd(),'node_modules')); }
+            if(!p){ console.error('Unable to resolve reporter path'); process.exit(2); }
+            console.log('REPORTER='+p);
+          " >> $GITHUB_ENV
+          echo "Reporter is: $REPORTER"
+
+      - name: Run Laminar
+        working-directory: /tmp/laminar-consumer
+        env:
+          LAMINAR_REPORTER_PATH: ${{ env.REPORTER }}
+        run: |
+          set -euo pipefail
+          npx lam init 2>&1 | tee -a lam-init.log
+          npx vitest run --reporter="$LAMINAR_REPORTER_PATH" 2>&1 | tee -a vitest.log
+          npx lam summary 2>&1 | tee -a lam-summary.log
+
+      - name: Validate artifacts
+        working-directory: /tmp/laminar-consumer
+        run: |
+          test -f reports/summary.jsonl
+          ls -R reports || true
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-validate-${{ matrix.os }}-node${{ matrix.node }}
+          path: |
+            /tmp/laminar-consumer/reports
+            /tmp/laminar-consumer/*.log
+            /tmp/laminar-consumer/node_modules/.bin
+            /tmp/laminar-consumer/node_modules/@agent_vega/laminar/package.json
+          if-no-files-found: ignore
+          retention-days: 7

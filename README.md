@@ -33,22 +33,27 @@ npx lam digest
 
 ## Installation
 
-### Install from GitHub (Recommended)
+### Install Modes
 
-Installing directly from GitHub:
-
+1) GitHub (recommended)
 ```bash
-# Install as dev dependency
 npm install -D github:anteew/Laminar
-
-# Or install specific release/tag
-npm install -D github:anteew/Laminar#v0.1.7
-
-# Or install specific commit
-npm install -D github:anteew/Laminar#299aed8
+# Or specific tag/commit
+npm install -D github:anteew/Laminar#v0.1.9
+npm install -D github:anteew/Laminar#<commit>
 ```
 
-This downloads the repo and installs it with pre-built files included in the repository.
+2) Private npm scope (when available)
+```bash
+npm install -D @agent_vega/laminar
+```
+
+3) Global (optional)
+```bash
+npm install -g github:anteew/Laminar
+```
+
+The repository includes pre-built dist files so no postinstall build is required.
 
 ## CLI Usage
 
@@ -60,17 +65,39 @@ npx lam --help
 
 ## Vitest Integration
 
-Configure Laminar as a Vitest reporter:
+Configure Laminar as a Vitest reporter. Prefer require.resolve so it works across install modes.
 
+- package.json script (GitHub install)
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=./node_modules/laminar/dist/src/test/reporter/jsonlReporter.js"
+    "test:ci": "PKG='laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
   }
 }
 ```
 
-Note: The path is `laminar` (not `@agent_vega/laminar`) when installed from GitHub.
+- package.json script (scoped install)
+```json
+{
+  "scripts": {
+    "test:ci": "PKG='@agent_vega/laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
+  }
+}
+```
+
+- vitest.config.ts
+```ts
+import { defineConfig } from 'vitest/config';
+export default defineConfig({
+  test: {
+    reporters: [
+      require.resolve(`${process.env.LAMINAR_PKG || 'laminar'}/dist/src/test/reporter/jsonlReporter.js`)
+    ]
+  }
+});
+```
+
+Advanced: override with LAMINAR_REPORTER_PATH=/abs/path/to/jsonlReporter.js
 
 ## Documentation
 

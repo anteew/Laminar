@@ -85,7 +85,9 @@ This structure enables reliable parsing and correlation of test events.
 
 ### Installation
 
-Laminar is published as a private scoped package:
+Install modes:
+- GitHub (recommended): `npm install -D github:anteew/Laminar`
+- Private scope (when available): `npm install -D @agent_vega/laminar`
 
 ```bash
 # Configure npm auth (add to ~/.npmrc)
@@ -120,7 +122,7 @@ Configure Laminar as a Vitest reporter:
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=./node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js"
+    "test:ci": "PKG='laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
   }
 }
 ```
