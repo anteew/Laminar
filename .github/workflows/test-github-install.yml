@@ -12,11 +12,12 @@ on:
 
 jobs:
   test-github-install:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18, 20]
+        os: [ubuntu-latest, macos-latest]
+        node-version: [24]
     
     steps:
       - name: Checkout repository
@@ -30,7 +31,7 @@ jobs:
       # Create a fresh test directory that simulates a user's project
       - name: Create test project
         run: |
-          mkdir -p /tmp/test-project
+          mkdir -p /tmp/test-project/logs
           cd /tmp/test-project
           npm init -y
 
@@ -67,20 +68,37 @@ jobs:
       - name: Test lam command
         run: |
           cd /tmp/test-project
-          npx lam --help
-          if [ $? -ne 0 ]; then
+          npx lam --help > logs/lam-help.stdout 2> logs/lam-help.stderr
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
             echo "ERROR: lam command failed!"
-            exit 1
+            exit $STATUS
           fi
           echo "✓ lam command works"
 
       # Test laminar-mcp command works
       - name: Test laminar-mcp command
+        shell: bash
         run: |
           cd /tmp/test-project
-          timeout 5 npx laminar-mcp --help || exit_code=$?
-          # laminar-mcp might hang waiting for input, so we timeout
-          # Exit codes: 0 = success, 124 = timeout (expected for MCP server), anything else = error
+          python3 - << 'PYCODE'
+          import subprocess, sys
+          out_path = "/tmp/test-project/logs/laminar-mcp-help.stdout"
+          err_path = "/tmp/test-project/logs/laminar-mcp-help.stderr"
+          try:
+              with open(out_path, "wb") as out, open(err_path, "wb") as err:
+                  p = subprocess.Popen(["npx", "laminar-mcp", "--help"], stdout=out, stderr=err)
+                  try:
+                      p.wait(timeout=5)
+                  except subprocess.TimeoutExpired:
+                      p.kill()
+                      sys.exit(124)
+                  sys.exit(p.returncode)
+          except Exception as e:
+              sys.stderr.write(str(e) + "\n")
+              sys.exit(1)
+          PYCODE
+          exit_code=$?
           if [ $exit_code -ne 0 ] && [ $exit_code -ne 124 ]; then
             echo "ERROR: laminar-mcp command failed with exit code $exit_code"
             exit 1
@@ -102,9 +120,9 @@ jobs:
       - name: Verify bin symlinks
         run: |
           cd /tmp/test-project
-          # Find where the bin symlinks point
-          LAM_BIN=$(readlink -f node_modules/.bin/lam)
-          MCP_BIN=$(readlink -f node_modules/.bin/laminar-mcp)
+          PY_REALPATH='import os,sys;print(os.path.realpath(sys.argv[1]))'
+          LAM_BIN=$(python3 -c "$PY_REALPATH" node_modules/.bin/lam)
+          MCP_BIN=$(python3 -c "$PY_REALPATH" node_modules/.bin/laminar-mcp)
           
           echo "lam symlink points to: $LAM_BIN"
           echo "laminar-mcp symlink points to: $MCP_BIN"
@@ -133,3 +151,22 @@ jobs:
           
           echo "=== JavaScript files ==="
           find /tmp/test-project/node_modules/@agent_vega/laminar -name "*.js" | head -20
+      - name: Collect symlink resolution notes
+        if: failure()
+        run: |
+          cd /tmp/test-project
+          mkdir -p logs
+          PY_REALPATH='import os,sys;print(os.path.realpath(sys.argv[1]))'
+          python3 -c "$PY_REALPATH" node_modules/.bin/lam > logs/lam.realpath.txt 2>&1 || true
+          python3 -c "$PY_REALPATH" node_modules/.bin/laminar-mcp > logs/laminar-mcp.realpath.txt 2>&1 || true
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-install-debug-${{ matrix.os }}-node${{ matrix.node-version }}
+          path: |
+            /tmp/test-project/node_modules/@agent_vega/laminar/**
+            /tmp/test-project/node_modules/.bin/**
+            /tmp/test-project/logs/**
+          if-no-files-found: warn
