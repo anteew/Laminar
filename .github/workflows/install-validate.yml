@@ -40,14 +40,17 @@ jobs:
         run: |
           npm install -D github:anteew/Laminar
 
-      - name: Configure reporter via require.resolve
+      - name: Resolve reporter path
+        id: reporter
         working-directory: /tmp/laminar-consumer
         run: |
-          node -e "const p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js'); console.log('Reporter:', p)"
-          npx --yes json -I -f package.json -e "this.scripts ||= {}; this.scripts['test:ci']='vitest run --reporter=\"$(node -e \\'console.log(require.resolve(\\\"laminar/dist/src/test/reporter/jsonlReporter.js\\\"))\\')\"'"
+          echo "REPORTER=$(node -e 'console.log(require.resolve(\"laminar/dist/src/test/reporter/jsonlReporter.js\"))')" >> $GITHUB_ENV
+          echo "Reporter is: $REPORTER"
 
       - name: Run Laminar
         working-directory: /tmp/laminar-consumer
+        env:
+          LAMINAR_REPORTER_PATH: ${{ env.REPORTER }}
         run: |
           npx lam init
           npx lam run --lane auto
