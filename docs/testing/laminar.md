@@ -8,7 +8,7 @@ Laminar is a branded, structured testing system for flow‑based applications. I
 
 ```bash
 # 1. Install locally in your project (recommended)
-npm install mkolbol
+npm install -D github:anteew/Laminar
 
 # 2. Initialize Laminar config
 npx lam init
@@ -20,18 +20,19 @@ npx lam run --lane auto
 npx lam summary
 ```
 
-**Alternative: Using npx without installation:**
+**Alternative: Using npx without installation (global install):**
 ```bash
-# Run commands directly without installing
-npx mkolbol lam init
-npx mkolbol lam run --lane auto
-npx mkolbol lam summary
+# Install globally and use without local devDependency
+npm install -g github:anteew/Laminar
+lam init
+lam run --lane auto
+lam summary
 ```
 
 **Global installation option:**
 ```bash
 # Install globally for 'lam' command everywhere
-npm install -g mkolbol
+npm install -g github:anteew/Laminar
 
 # Use without npx prefix
 lam init
@@ -66,7 +67,7 @@ npx lam repro
 **Usage Notes:**
 - **Local install**: Use `npx lam` prefix for all commands
 - **Global install**: Use `lam` directly (no `npx` needed)
-- **No install**: Use `npx mkolbol lam` prefix (downloads on-demand)
+- **No local devDependency**: Use global install `lam` after `npm i -g github:anteew/Laminar`
 
 **Quick Tips:**
 - All artifacts → `reports/` directory
@@ -142,7 +143,7 @@ The index manifest provides a complete catalog of test artifacts:
       "testName": "connect moves data 1:1",
       "status": "pass",
       "duration": 6,
-      "location": "/srv/repos0/mkolbol/tests/kernel.spec.ts:45",
+      "location": "/srv/repos0/laminar-demo/tests/kernel.spec.ts:45",
       "timestamp": "2025-10-12T17:37:41.027Z",
       "artifacts": {
         "summary": "reports/summary.jsonl",
@@ -1116,7 +1117,7 @@ jobs:
         continue-on-error: true
       
       - name: Install Laminar
-        run: npm install -g mkolbol
+        run: npm install -g github:anteew/Laminar
       
       - name: Ingest Go test results
         run: lam ingest --go --from-file go-test.json
@@ -1296,14 +1297,14 @@ Unique failure fingerprints: 5
    Fingerprint: fp-abc123def456
    First seen:  2025-10-01T14:23:11.000Z
    Last seen:   2025-10-12T17:45:22.000Z
-   Locations:   /srv/repos0/mkolbol/tests/kernel.spec.ts:45
+   Locations:   /srv/repos0/laminar-demo/tests/kernel.spec.ts:45
    Error:       Expected value to be 42, got 40
 
 #2 topology.spec/rewire_edges (8 failures)
    Fingerprint: fp-xyz789abc012
    First seen:  2025-10-05T09:12:33.000Z
    Last seen:   2025-10-12T16:20:15.000Z
-   Locations:   /srv/repos0/mkolbol/tests/topology.spec.ts:128
+   Locations:   /srv/repos0/laminar-demo/tests/topology.spec.ts:128
    Error:       Assertion failed: edge count mismatch
 ```
 
@@ -2580,7 +2581,7 @@ interface CodeFrame {
   "events": [ /* ... */ ],
   "codeframes": [
     {
-      "file": "/srv/repos0/mkolbol/tests/topology.spec.ts",
+      "file": "/srv/repos0/laminar-demo/tests/topology.spec.ts",
       "line": 61,
       "column": 5,
       "context": {
@@ -2603,7 +2604,7 @@ interface CodeFrame {
 ```markdown
 ## Code Frames
 
-  at /srv/repos0/mkolbol/tests/topology.spec.ts:61:5
+  at /srv/repos0/laminar-demo/tests/topology.spec.ts:61:5
   59 |   const result = controller.applyCommand(cmd);
   60 |   
 > 61 |   expect(result.nodes.length).toBe(42);
@@ -2671,9 +2672,9 @@ Laminar includes a home‑scoped project registry so agents can refer to workspa
 ```json
 [
   {
-    "id": "mkolbol",
-    "root": "/srv/repos0/mkolbol",
-    "configPath": "/srv/repos0/mkolbol/laminar.config.json",
+    "id": "laminar-demo",
+    "root": "/srv/repos0/laminar-demo",
+    "configPath": "/srv/repos0/laminar-demo/laminar.config.json",
     "reportsDir": "reports",
     "historyPath": "reports/history.jsonl",
     "createdAt": "2025-10-13T02:55:00Z"
@@ -2698,19 +2699,19 @@ Resolution precedence (CLI and MCP tools):
 CLI project management:
 
 ```bash
-lam project register --id mkolbol --root /srv/repos0/mkolbol [--config <path>] [--reports reports] [--history reports/history.jsonl]
+lam project register --id laminar-demo --root /srv/repos0/laminar-demo [--config <path>] [--reports reports] [--history reports/history.jsonl]
 lam project list
-lam project show --id mkolbol
-lam project remove --id mkolbol
+lam project show --id laminar-demo
+lam project remove --id laminar-demo
 ```
 
 Use aliases everywhere:
 
 ```bash
-lam run --project mkolbol --lane auto
-lam summary --project mkolbol --hints
-lam show --project mkolbol --case kernel.spec/fails_here --around assert.fail --window 80
-lam trends --project mkolbol --top 10
+lam run --project laminar-demo --lane auto
+lam summary --project laminar-demo --hints
+lam show --project laminar-demo --case kernel.spec/fails_here --around assert.fail --window 80
+lam trends --project laminar-demo --top 10
 ```
 
 MCP tools (subset):

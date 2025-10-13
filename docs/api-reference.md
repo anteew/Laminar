@@ -666,7 +666,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     reporters: [
-      './node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js'
+      require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js')
+      // or: require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js')
     ]
   }
 });
@@ -675,7 +676,7 @@ export default defineConfig({
 #### Usage via CLI
 
 ```bash
-vitest run --reporter=./node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js
+vitest run --reporter="$(node -e 'console.log(require.resolve(\"laminar/dist/src/test/reporter/jsonlReporter.js\"))')"
 ```
 
 ## Fingerprinting

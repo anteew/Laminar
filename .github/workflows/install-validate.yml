@@ -1,0 +1,60 @@
+name: Install Validate (GitHub install)
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  github-install-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Laminar
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create temp consumer project
+        run: |
+          mkdir -p /tmp/laminar-consumer && cd /tmp/laminar-consumer
+          npm init -y
+          npm install -D vitest@1
+          echo "export default { test: { } }" > vitest.config.mjs
+          mkdir -p tests
+          cat > tests/smoke.spec.ts << 'EOF'
+          import { describe, it, expect } from 'vitest';
+          describe('smoke', () => {
+            it('works', () => { expect(1+1).toBe(2); });
+          });
+          EOF
+
+      - name: Install Laminar from GitHub
+        working-directory: /tmp/laminar-consumer
+        run: |
+          npm install -D github:anteew/Laminar
+
+      - name: Configure reporter via require.resolve
+        working-directory: /tmp/laminar-consumer
+        run: |
+          node -e "const p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js'); console.log('Reporter:', p)"
+          npx --yes json -I -f package.json -e "this.scripts ||= {}; this.scripts['test:ci']='vitest run --reporter=\"$(node -e \\'console.log(require.resolve(\\\"laminar/dist/src/test/reporter/jsonlReporter.js\\\"))\\')\"'"
+
+      - name: Run Laminar
+        working-directory: /tmp/laminar-consumer
+        run: |
+          npx lam init
+          npx lam run --lane auto
+          npx lam summary
+
+      - name: Validate artifacts
+        working-directory: /tmp/laminar-consumer
+        run: |
+          test -f reports/summary.jsonl
+          ls -R reports || true
