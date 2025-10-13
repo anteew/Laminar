@@ -71,7 +71,7 @@ Configure Laminar as a Vitest reporter. Prefer require.resolve so it works acros
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=\"$(node -e 'console.log(require.resolve(\"laminar/dist/src/test/reporter/jsonlReporter.js\"))')\""
+    "test:ci": "PKG='laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
   }
 }
 ```
@@ -80,7 +80,7 @@ Configure Laminar as a Vitest reporter. Prefer require.resolve so it works acros
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=\"$(node -e 'console.log(require.resolve(\"@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js\"))')\""
+    "test:ci": "PKG='@agent_vega/laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
   }
 }
 ```
@@ -91,8 +91,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     reporters: [
-      require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js')
-      // or: require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js')
+      require.resolve(`${process.env.LAMINAR_PKG || 'laminar'}/dist/src/test/reporter/jsonlReporter.js`)
     ]
   }
 });

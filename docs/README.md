@@ -122,7 +122,7 @@ Configure Laminar as a Vitest reporter:
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=\"$(node -e 'console.log(require.resolve(\"laminar/dist/src/test/reporter/jsonlReporter.js\"))')\""
+    "test:ci": "PKG='laminar' node -e \"console.log(require.resolve(`${process.env.PKG}/dist/src/test/reporter/jsonlReporter.js`))\" | xargs -I{} vitest run --reporter=\"{}\""
   }
 }
 ```

@@ -44,7 +44,7 @@ jobs:
         id: reporter
         working-directory: /tmp/laminar-consumer
         run: |
-          echo "REPORTER=$(node -e 'console.log(require.resolve(\"laminar/dist/src/test/reporter/jsonlReporter.js\"))')" >> $GITHUB_ENV
+          node -e "let p; try { p=require.resolve('@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js'); } catch(e) { try { p=require.resolve('laminar/dist/src/test/reporter/jsonlReporter.js'); } catch(e2) { console.error('Unable to resolve reporter path'); process.exit(2); } } console.log('REPORTER='+p)" >> $GITHUB_ENV
           echo "Reporter is: $REPORTER"
 
       - name: Run Laminar
