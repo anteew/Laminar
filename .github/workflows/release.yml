@@ -9,8 +9,30 @@ permissions:
   contents: write
 
 jobs:
+  preflight-test-github-install:
+    uses: ./.github/workflows/test-github-install.yml
+    secrets: inherit
+
+  preflight-integration-tests:
+    uses: ./.github/workflows/integration-tests.yml
+    secrets: inherit
+
+  preflight-install-validate:
+    uses: ./.github/workflows/install-validate.yml
+    secrets: inherit
+
+  preflight:
+    runs-on: ubuntu-latest
+    needs:
+      - preflight-test-github-install
+      - preflight-integration-tests
+      - preflight-install-validate
+    steps:
+      - run: echo "All preflight checks passed."
+
   release:
     runs-on: ubuntu-latest
+    needs: preflight
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +59,11 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           TAG_VERSION="${{ steps.v.outputs.VERSION }}"
           if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: package.json version ($PACKAGE_VERSION) does not match tag ($TAG_VERSION)" >&2
+            echo "::error::package.json version ($PACKAGE_VERSION) does not match tag ($TAG_VERSION)."
+            echo "To fix:"
+            echo "  1) Update package.json \"version\" to $TAG_VERSION"
+            echo "  2) Commit the change"
+            echo "  3) Recreate the tag: git tag -d v$TAG_VERSION && git tag v$TAG_VERSION && git push --tags -f"
             exit 1
           fi
 
