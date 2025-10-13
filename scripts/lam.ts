@@ -20,7 +20,9 @@ Stream-based test execution and failure analysis toolkit
 
 USAGE
   lam <command> [options]
-  npx lam <command> [options]
+  npm exec lam <command> [options]
+  # If not installed locally (private scope):
+  npx -p @agent_vega/laminar lam <command> [options]
 
 CONFIGURATION
   init [--template <t>] [--dry-run] [--force]
@@ -67,9 +69,9 @@ CONFIGURATION MANAGEMENT
 
 EXAMPLES
   # Quick start
-  npx lam init                              # Initialize Laminar with node-defaults template
-  npx lam init --dry-run                    # Preview config without creating
-  npx lam init --template go-defaults       # Initialize for Go projects
+  npm exec lam init                         # Initialize Laminar with node-defaults template
+  npm exec lam init --dry-run               # Preview config without creating
+  npm exec lam init --template go-defaults  # Initialize for Go projects
   lam run --lane auto                       # Run tests with auto-detection
   lam summary                               # View results
 
