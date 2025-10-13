@@ -1,6 +1,6 @@
 {
-  "name": "laminar",
-  "version": "0.1.0",
+  "name": "@anteew/laminar",
+  "version": "0.1.1",
   "description": "Agent-first test observability: JSONL artifacts, digests, hints, trends, diff/repro, cross-language ingest.",
   "type": "module",
   "license": "MIT",
@@ -23,6 +23,9 @@
     "./package.json": "./package.json"
   },
   "files": ["dist/", "README.md", "LICENSE", "docs/"],
+  "publishConfig": {
+    "access": "restricted"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
