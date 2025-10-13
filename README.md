@@ -15,8 +15,8 @@ Laminar transforms your test suite into a structured, queryable knowledge base w
 ## Quick Start
 
 ```bash
-# 1. Install
-npm install -D @agent_vega/laminar
+# 1. Install from GitHub
+npm install -D github:anteew/Laminar
 
 # 2. Initialize configuration
 npx lam init
@@ -33,9 +33,26 @@ npx lam digest
 
 ## Installation
 
-Laminar is currently published as a private scoped package: `@agent_vega/laminar`.
+### Install from GitHub (Recommended)
 
-Configure npm authentication:
+Since Laminar is currently in a private npm registry, install directly from GitHub:
+
+```bash
+# Install as dev dependency
+npm install -D github:anteew/Laminar
+
+# Or install specific release/tag
+npm install -D github:anteew/Laminar#v0.1.7
+
+# Or install specific commit
+npm install -D github:anteew/Laminar#299aed8
+```
+
+This downloads the repo, runs `npm install && npm run build` automatically, and installs the built package.
+
+### Install from Private npm Registry
+
+If you have access to the private registry:
 
 ```ini
 # ~/.npmrc
@@ -44,23 +61,23 @@ always-auth=true
 //registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
 
-Install as a dev dependency:
-
 ```bash
 npm install -D @agent_vega/laminar
 ```
 
 ## CLI Usage
 
-If installed locally:
+If installed locally (from GitHub):
+
+```bash
+npx lam --help
+```
+
+If installed from private registry:
 
 ```bash
 npm exec lam -- --help
-```
-
-Without installing:
-
-```bash
+# or
 npx -p @agent_vega/laminar lam --help
 ```
 
@@ -71,10 +88,12 @@ Configure Laminar as a Vitest reporter:
 ```json
 {
   "scripts": {
-    "test:ci": "vitest run --reporter=./node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js"
+    "test:ci": "vitest run --reporter=./node_modules/laminar/dist/src/test/reporter/jsonlReporter.js"
   }
 }
 ```
+
+Note: The path is `laminar` (not `@agent_vega/laminar`) when installed from GitHub.
 
 ## Documentation
 

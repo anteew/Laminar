@@ -13,11 +13,38 @@ Once configured, AI assistants can:
 - Compare test runs
 - All without leaving the chat interface!
 
-## Quick Setup (Using the Repo)
+## Quick Setup
 
-Since Laminar isn't published to npm yet, you'll run it directly from the repository.
+Since Laminar is in a private npm registry, install from GitHub. Choose one of these methods:
 
-### 1. Clone and Build Laminar
+### Option A: Install via npm (Easiest)
+
+```bash
+# Install globally from GitHub
+npm install -g github:anteew/Laminar
+
+# Or install latest release tag
+npm install -g github:anteew/Laminar#v0.1.7
+
+# Verify the MCP server is installed
+which laminar-mcp
+```
+
+npm automatically downloads, builds, and installs the package. The `laminar-mcp` command will be available globally.
+
+**Find the installation path:**
+```bash
+# On macOS/Linux
+npm root -g
+# Returns something like: /usr/local/lib/node_modules
+
+# The MCP server is at:
+# /usr/local/lib/node_modules/laminar/dist/scripts/mcp-server.js
+```
+
+### Option B: Clone and Build (For Development)
+
+If you want to modify Laminar or stay on the latest commit:
 
 ```bash
 # Clone the repository
@@ -73,7 +100,40 @@ Edit your Claude Desktop config file:
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`  
 **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-Add Laminar to the `mcpServers` section:
+#### If you used Option A (npm install -g):
+
+Use the `laminar-mcp` command directly:
+
+```json
+{
+  "mcpServers": {
+    "laminar": {
+      "command": "laminar-mcp"
+    }
+  }
+}
+```
+
+That's it! The globally installed binary will be found automatically.
+
+**Or use the full path:**
+
+```json
+{
+  "mcpServers": {
+    "laminar": {
+      "command": "node",
+      "args": [
+        "/usr/local/lib/node_modules/laminar/dist/scripts/mcp-server.js"
+      ]
+    }
+  }
+}
+```
+
+Replace `/usr/local/lib/node_modules` with your npm global path (find with `npm root -g`).
+
+#### If you used Option B (cloned repo):
 
 ```json
 {
@@ -88,7 +148,7 @@ Add Laminar to the `mcpServers` section:
 }
 ```
 
-**Important**: Replace `/absolute/path/to/Laminar` with the actual path where you cloned Laminar.
+**Important**: Replace `/absolute/path/to/Laminar` with where you cloned it.
 
 For example:
 - macOS/Linux: `"/Users/dan/projects/Laminar/dist/scripts/mcp-server.js"`
@@ -149,36 +209,30 @@ First, register your projects so Claude can reference them easily:
 
 ## Advanced Configuration
 
-### Using npx (Future)
+### Using Specific Tags or Commits
 
-Once Laminar is published to npm, you'll be able to use:
+Install a specific version:
 
-```json
-{
-  "mcpServers": {
-    "laminar": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@agent_vega/laminar",
-        "laminar-mcp"
-      ]
-    }
-  }
-}
+```bash
+# Install specific release tag
+npm install -g github:anteew/Laminar#v0.1.7
+
+# Install specific commit
+npm install -g github:anteew/Laminar#299aed8
+
+# Install from main branch (latest)
+npm install -g github:anteew/Laminar
 ```
 
-This will automatically download and run the latest version.
+### When Published to npm (Future)
 
-### Using Global Install (Future)
-
-Or install globally:
+Once Laminar is published publicly, you'll be able to use:
 
 ```bash
 npm install -g @agent_vega/laminar
 ```
 
-Then configure:
+With simpler config:
 
 ```json
 {
