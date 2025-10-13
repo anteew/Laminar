@@ -20,6 +20,7 @@ import {
   deriveIdFromRoot,
   ProjectRecord,
 } from '../src/project/registry.js';
+import { logUsage } from '../src/utils/logger.js';
 
 function sh(cmd: string, args: string[], env: Record<string, string> = {}) {
   const res = spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
@@ -211,6 +212,8 @@ async function main() {
       args.set(k, v as any);
     }
   }
+
+  logUsage('cli', cmd || 'help', Object.fromEntries(args));
 
   switch (cmd) {
     case 'project': {

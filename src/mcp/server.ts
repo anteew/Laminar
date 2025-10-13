@@ -5,6 +5,7 @@ import { resolveContext, resolveReportsAbsolute } from '../config/resolve.js';
 import { listProjects, registerProject, removeProject, getProject, deriveIdFromRoot } from '../project/registry.js';
 import { DigestDiffEngine } from '../digest/diff.js';
 import { DigestGenerator } from '../digest/generator.js';
+import { logUsage } from '../utils/logger.js';
 
 export interface ToolDef<I = any, O = any> {
   name: string;
@@ -25,6 +26,7 @@ export class LaminarMcpServer {
   }
 
   async call<I, O>(name: string, input: I): Promise<O> {
+    logUsage('mcp', name, input);
     const t = this.tools.get(name);
     if (!t) throw new Error(`Unknown tool: ${name}`);
     return t.handler(input) as Promise<O>;
