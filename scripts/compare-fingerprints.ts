@@ -44,7 +44,7 @@ function compareFingerprints(basePath: string, headPath: string): ComparisonResu
     }
   }
   
-  const regressionDetected = added.length > 0;
+  const regressionDetected = added.length > 0 && baseRecords.length > 0;
   
   return {
     summary: {
@@ -79,6 +79,12 @@ function formatMarkdownReport(result: ComparisonResult): string {
     lines.push('## ⚠️ Regression Detected');
     lines.push('');
     lines.push('New failure fingerprints were detected. This PR introduces regressions.');
+    lines.push('');
+  } else if (result.summary.baseCount === 0 && result.summary.headCount > 0) {
+    lines.push('## 🎉 Initial Baseline Established');
+    lines.push('');
+    lines.push(`This PR establishes the initial baseline with ${result.summary.headCount} fingerprint(s).`);
+    lines.push('Future PRs will be compared against this baseline to detect regressions.');
     lines.push('');
   } else if (result.summary.removed > 0) {
     lines.push('## ✅ Improvements Detected');
