@@ -2,6 +2,12 @@
 
 This guide explains how to use Laminar with the Model Context Protocol (MCP), enabling AI agents to interact with test observability data.
 
+## Setup
+
+**First time here?** Start with the **[MCP Setup Guide](./mcp-setup.md)** for step-by-step instructions on configuring Laminar with Claude Desktop or other MCP clients.
+
+This document covers the available tools and how to use them programmatically.
+
 ## What is MCP?
 
 The Model Context Protocol provides a standardized way for AI systems to access tools and resources. Laminar's MCP server exposes test observability functionality as callable tools that AI agents can use to understand, debug, and analyze test failures.

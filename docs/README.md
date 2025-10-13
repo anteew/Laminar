@@ -131,6 +131,7 @@ Configure Laminar as a Vitest reporter:
 
 - **[CLI Guide](./cli-guide.md)**: Complete command reference and usage examples
 - **[Testing Guide](./testing/laminar.md)**: Comprehensive testing workflow documentation
+- **[MCP Setup Guide](./mcp-setup.md)**: Setting up Laminar with Claude Desktop (start here!)
 - **[MCP Integration](./mcp-integration.md)**: Using Laminar with Model Context Protocol
 
 ### For Developers
