@@ -2661,6 +2661,77 @@ Laminar fits the project’s physical‑manifold metaphor: smooth, predictable f
 
 Laminar provides a full-featured MCP (Model Context Protocol) server for AI agent integration. The server exposes test artifacts, logs, and digests through a standard protocol that AI agents and tools can consume.
 
+### Projects & Home Registry (LLM‑friendly aliases)
+
+Laminar includes a home‑scoped project registry so agents can refer to workspaces by alias instead of absolute paths.
+
+- Registry path: `~/.laminar/registry.json` (or `$XDG_CONFIG_HOME/laminar/registry.json`)
+- Record shape (pointers only — config stays in the repo):
+
+```json
+[
+  {
+    "id": "mkolbol",
+    "root": "/srv/repos0/mkolbol",
+    "configPath": "/srv/repos0/mkolbol/laminar.config.json",
+    "reportsDir": "reports",
+    "historyPath": "reports/history.jsonl",
+    "createdAt": "2025-10-13T02:55:00Z"
+  }
+]
+```
+
+Recommended config placement per project:
+
+- Repo local: `<root>/laminar.config.json` (or `<root>/.laminar/config.json`)
+- Per‑run artifacts: `<root>/reports/…`
+- Trends ledger (default): `<root>/reports/history.jsonl` (overrideable)
+
+Resolution precedence (CLI and MCP tools):
+
+1. Params (`--project`, `--root`, `--config`, `--reports`, `--history`)
+2. Env (`LAMINAR_PROJECT`, `LAMINAR_ROOT`, …)
+3. Home registry alias → `root`/`configPath`
+4. Repo config (`<root>/laminar.config.json`, `<root>/.laminar/config.json`)
+5. Defaults (`root=cwd`, `reportsDir=reports/`, `history=reports/history.jsonl`)
+
+CLI project management:
+
+```bash
+lam project register --id mkolbol --root /srv/repos0/mkolbol [--config <path>] [--reports reports] [--history reports/history.jsonl]
+lam project list
+lam project show --id mkolbol
+lam project remove --id mkolbol
+```
+
+Use aliases everywhere:
+
+```bash
+lam run --project mkolbol --lane auto
+lam summary --project mkolbol --hints
+lam show --project mkolbol --case kernel.spec/fails_here --around assert.fail --window 80
+lam trends --project mkolbol --top 10
+```
+
+MCP tools (subset):
+
+- `readme.get()` – compact overview for zero‑shot agents
+- `workspace.roots.list()` – list `{ id, root, configPath?, reportsDir, historyPath }`
+- `workspace.root.register({ id?, root, configPath?, reportsDir?, historyPath? })`
+- `workspace.root.remove({ id })`
+- `run({ project?, lane?, filter? })`
+- `summary({ project? })`
+- `show({ project?, case, around?, window? })`
+- `digest.generate({ project?, cases? })`
+- `diff.get({ left, right, format? })`
+- `trends.query({ project?, since?, until?, top? })`
+- `rules.get({ project? })` / `rules.set({ project?, inline? | file? })`
+
+Conflicts/fallback:
+
+- If both `--project` and `--root` conflict, params win with a one‑line warning.
+- If nothing is registered and no config exists, Laminar runs stateless in `cwd` and writes artifacts to `./reports` (no history unless provided).
+
 **Key Features:**
 - 12 MCP tools for test execution, querying, and analysis
 - Resources for accessing summary and digest files
