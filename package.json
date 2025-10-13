@@ -9,7 +9,8 @@
     "url": "https://github.com/anteew/Laminar.git"
   },
   "bin": {
-    "lam": "dist/scripts/lam.js"
+    "lam": "dist/scripts/lam.js",
+    "laminar-mcp": "dist/scripts/mcp-server.js"
   },
   "main": "./dist/src/index.js",
   "module": "./dist/src/index.js",
