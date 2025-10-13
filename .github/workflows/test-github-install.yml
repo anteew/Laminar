@@ -76,8 +76,8 @@ jobs:
           fi
           echo "✓ lam command works"
 
-      # Test laminar-mcp command works
-      - name: Test laminar-mcp command
+      # Test laminar-mcp --help exits immediately with 0
+      - name: Test laminar-mcp --help exits immediately
         shell: bash
         run: |
           cd /tmp/test-project
@@ -99,11 +99,12 @@ jobs:
               sys.exit(1)
           PYCODE
           exit_code=$?
-          if [ $exit_code -ne 0 ] && [ $exit_code -ne 124 ]; then
-            echo "ERROR: laminar-mcp command failed with exit code $exit_code"
+          if [ $exit_code -ne 0 ]; then
+            echo "ERROR: laminar-mcp --help must exit with 0, got exit code $exit_code"
+            echo "If timeout (124), the command is not exiting immediately as required"
             exit 1
           fi
-          echo "✓ laminar-mcp command executable"
+          echo "✓ laminar-mcp --help exits immediately with 0"
 
       # Test that lam init works
       - name: Test lam init
