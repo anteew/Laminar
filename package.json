@@ -31,6 +31,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "bash tests/e2e/install-test.sh",
     "lam": "node dist/scripts/lam.js",
     "prepublishOnly": "npm run build"
   },
