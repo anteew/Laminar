@@ -21,6 +21,8 @@ import {
   ProjectRecord,
 } from '../src/project/registry.js';
 import { logUsage } from '../src/utils/logger.js';
+import { runAllChecks } from '../src/doctor/checks.js';
+import { exitWithError, formatUsage } from '../src/utils/errors.js';
 
 function sh(cmd: string, args: string[], env: Record<string, string> = {}) {
   const res = spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
@@ -71,6 +73,8 @@ ANALYSIS & REPORTING
          [--top <n>]                        Number of top offenders to display (default: 10)
 
 DEBUGGING
+  doctor                                    Run diagnostic checks on Laminar installation
+                                            Checks: Node version, PATH, bin symlinks, dist files, reporter, config
   repro --bundle [--case <case-name>]       Bundle reproduction artifacts for debugging
                                             If --case omitted, bundles all failing tests
 
@@ -111,6 +115,7 @@ EXAMPLES
   lam ingest --junit --cmd "mvn test"
 
   # Debugging support
+  lam doctor                                # Check installation health
   lam repro --bundle --case kernel.spec/failing_test
 
   # Configuration
@@ -227,13 +232,19 @@ async function main() {
         }
       } else if (sub === 'show') {
         const id = get('id') || rest[1];
-        if (!id) { console.error('lam project show --id <id>'); process.exit(1); }
+        if (!id) {
+          exitWithError('Missing required argument', formatUsage('project show', '--id <id>'));
+        }
         const p = getProject(id);
-        if (!p) { console.error(`Project not found: ${id}`); process.exit(1); }
+        if (!p) {
+          exitWithError(`Project not found: ${id}`, 'Use "lam project list" to see available projects');
+        }
         console.log(JSON.stringify(p, null, 2));
       } else if (sub === 'register') {
         const rootArg = get('root');
-        if (!rootArg) { console.error('lam project register --root <path> [--id <id>] [--config <path>] [--reports <dir>] [--history <path>]'); process.exit(1); }
+        if (!rootArg) {
+          exitWithError('Missing required argument', formatUsage('project register', '--root <path> [--id <id>] [--config <path>] [--reports <dir>] [--history <path>]'));
+        }
         const rootAbs = path.isAbsolute(rootArg) ? rootArg : path.resolve(rootArg);
         const id = get('id') || deriveIdFromRoot(rootAbs);
         const rec: ProjectRecord = {
@@ -375,7 +386,9 @@ async function main() {
     }
     case 'show': {
       const caseId = args.get('case') as string;
-      if (!caseId) { console.error('lam show --case <suite/case> [--around <pattern>] [--window <n>]'); process.exit(1); }
+      if (!caseId) {
+        exitWithError('Missing required argument', formatUsage('show', '--case <suite/case> [--around <pattern>] [--window <n>]'));
+      }
       const around = (args.get('around') as string) || 'assert.fail';
       const window = (args.get('window') as string) || '50';
       const ctx = resolveContext({
@@ -492,6 +505,47 @@ async function main() {
         } else {
           console.log(engine.formatAsJson(diff, true));
         }
+      }
+      break;
+    }
+    case 'doctor': {
+      const checks = runAllChecks();
+      let hasCriticalFailures = false;
+      
+      console.log('\n=== Laminar Doctor: Installation Health Check ===\n');
+      
+      for (const check of checks) {
+        const symbol = check.passed ? '✓' : '✗';
+        const status = check.passed ? 'PASS' : 'FAIL';
+        
+        console.log(`${symbol} ${check.name}: ${status}`);
+        console.log(`  ${check.message}`);
+        
+        if (!check.passed && check.fix) {
+          console.log(`  Fix: ${check.fix}`);
+        }
+        
+        if (!check.passed && check.critical) {
+          hasCriticalFailures = true;
+        }
+        
+        console.log('');
+      }
+      
+      const passedCount = checks.filter(c => c.passed).length;
+      const failedCount = checks.filter(c => !c.passed).length;
+      
+      console.log(`Summary: ${passedCount} passed, ${failedCount} failed`);
+      
+      if (hasCriticalFailures) {
+        console.log('\n⚠️  Critical issues detected. Please fix the issues above before using Laminar.');
+        process.exit(1);
+      } else if (failedCount > 0) {
+        console.log('\n⚠️  Some non-critical issues detected. Laminar may work but some features might be limited.');
+        process.exit(0);
+      } else {
+        console.log('\n✓ All checks passed! Laminar is ready to use.');
+        process.exit(0);
       }
       break;
     }
