@@ -1,12 +1,17 @@
 # Dependencies
 node_modules/
 
+# Build output
+dist/
+
 # Logs
 *.log
 npm-debug.log*
 
 # Test artifacts
 reports/
+coverage/
+.vitest/
 
 # Environment variables
 .env
