@@ -1,0 +1,36 @@
+{
+  "name": "laminar",
+  "version": "0.1.0",
+  "description": "Agent-first test observability: JSONL artifacts, digests, hints, trends, diff/repro, cross-language ingest.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anteew/Laminar.git"
+  },
+  "bin": {
+    "lam": "dist/scripts/lam.js"
+  },
+  "main": "./dist/src/index.js",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist/", "README.md", "LICENSE", "docs/"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lam": "node dist/scripts/lam.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.6.2",
+    "vitest": "^1.6.0"
+  }
+}
