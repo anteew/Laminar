@@ -1,4 +1,48 @@
 import * as crypto from 'node:crypto';
+import * as path from 'node:path';
+
+/**
+ * Normalizes file paths for fingerprint generation to ensure consistency
+ * across different checkout directories (e.g., CI base/head dual-checkout).
+ * 
+ * Handles:
+ * - CI dual-checkout pattern: .../base/... or .../head/... → relative path
+ * - Absolute local paths → relative to cwd
+ * - Already relative paths → unchanged
+ */
+export function normalizePathForFingerprint(filePath: string): string {
+  if (!filePath) {
+    return filePath;
+  }
+
+  const normalizedPath = filePath.replace(/\\/g, '/');
+
+  if (!normalizedPath.startsWith('/') && !/^[A-Za-z]:\//.test(normalizedPath)) {
+    return filePath;
+  }
+
+  const dualCheckoutMatch = normalizedPath.match(/\/(base|head)\/(.*)/);
+  if (dualCheckoutMatch) {
+    return dualCheckoutMatch[2];
+  }
+
+  const projectRootMatch = normalizedPath.match(/\/Laminar\/(.*)/);
+  if (projectRootMatch) {
+    return projectRootMatch[1];
+  }
+
+  try {
+    const cwd = process.cwd();
+    if (filePath.startsWith(cwd + path.sep)) {
+      return path.relative(cwd, filePath);
+    }
+  } catch {
+    // Ignore errors from process.cwd() or path.relative()
+  }
+
+  // Return original if we can't normalize (defensive fallback)
+  return filePath;
+}
 
 export interface FailureInfo {
   testName: string;
@@ -63,7 +107,8 @@ export function extractFailureInfo(
         const match = firstRelevantLine.match(/\(([^)]+):(\d+):(\d+)\)/) ||
                       firstRelevantLine.match(/at ([^:]+):(\d+):(\d+)/);
         if (match) {
-          info.stackLocation = `${match[1]}:${match[2]}`;
+          const normalizedPath = normalizePathForFingerprint(match[1]);
+          info.stackLocation = `${normalizedPath}:${match[2]}`;
         }
       }
     }
