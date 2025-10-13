@@ -33,6 +33,9 @@
     "test:watch": "vitest",
     "test:e2e": "bash tests/e2e/install-test.sh",
     "lam": "node dist/scripts/lam.js",
+    "docs:validate": "node dist/scripts/link-lint.js . && node dist/scripts/docs-executor.js .",
+    "docs:links": "node dist/scripts/link-lint.js .",
+    "docs:exec": "node dist/scripts/docs-executor.js .",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
