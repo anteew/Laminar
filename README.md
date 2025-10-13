@@ -35,7 +35,7 @@ npx lam digest
 
 ### Install from GitHub (Recommended)
 
-Since Laminar is currently in a private npm registry, install directly from GitHub:
+Installing directly from GitHub:
 
 ```bash
 # Install as dev dependency
@@ -49,21 +49,6 @@ npm install -D github:anteew/Laminar#299aed8
 ```
 
 This downloads the repo, runs `npm install && npm run build` automatically, and installs the built package.
-
-### Install from Private npm Registry
-
-If you have access to the private registry:
-
-```ini
-# ~/.npmrc
-@agent_vega:registry=https://registry.npmjs.org
-always-auth=true
-//registry.npmjs.org/:_authToken=${NPM_TOKEN}
-```
-
-```bash
-npm install -D @agent_vega/laminar
-```
 
 ## CLI Usage
 
