@@ -1,0 +1,211 @@
+name: Digest/Fingerprint Regression Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  regression-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout PR branch (HEAD)
+        uses: actions/checkout@v4
+        with:
+          path: head
+      
+      - name: Checkout base branch (main)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: head/package-lock.json
+      
+      # Build and test BASE branch
+      - name: Install dependencies (base)
+        run: |
+          cd base
+          npm ci
+      
+      - name: Build package (base)
+        run: |
+          cd base
+          npm run build
+      
+      - name: Run tests with seeded fixture (base)
+        run: |
+          cd base
+          TEST_SEED=laminar-regression-2025 npm test
+        continue-on-error: true
+      
+      - name: Generate digests (base)
+        run: |
+          cd base
+          npx tsx dist/scripts/digest.js || true
+      
+      - name: Extract fingerprints (base)
+        run: |
+          cd base
+          if [ -d reports ]; then
+            npx tsx scripts/extract-fingerprints.ts reports base-fingerprints.json
+          else
+            echo "[]" > base-fingerprints.json
+          fi
+      
+      - name: Save base fingerprints
+        run: |
+          if [ -f base/base-fingerprints.json ]; then
+            cp base/base-fingerprints.json base-fingerprints.json
+          else
+            echo "[]" > base-fingerprints.json
+          fi
+      
+      # Build and test HEAD branch
+      - name: Install dependencies (head)
+        run: |
+          cd head
+          npm ci
+      
+      - name: Build package (head)
+        run: |
+          cd head
+          npm run build
+      
+      - name: Run tests with seeded fixture (head)
+        run: |
+          cd head
+          TEST_SEED=laminar-regression-2025 npm test
+        continue-on-error: true
+      
+      - name: Generate digests (head)
+        run: |
+          cd head
+          npx tsx dist/scripts/digest.js || true
+      
+      - name: Extract fingerprints (head)
+        run: |
+          cd head
+          if [ -d reports ]; then
+            npx tsx scripts/extract-fingerprints.ts reports head-fingerprints.json
+          else
+            echo "[]" > head-fingerprints.json
+          fi
+      
+      - name: Save head fingerprints
+        run: |
+          if [ -f head/head-fingerprints.json ]; then
+            cp head/head-fingerprints.json head-fingerprints.json
+          else
+            echo "[]" > head-fingerprints.json
+          fi
+      
+      # Compare fingerprints
+      - name: Compare fingerprints
+        id: compare
+        run: |
+          cd head
+          npx tsx scripts/compare-fingerprints.ts \
+            ../base-fingerprints.json \
+            head-fingerprints.json \
+            --format markdown \
+            --output comparison-report.md
+        continue-on-error: true
+      
+      - name: Check comparison exit code
+        run: |
+          cd head
+          npx tsx scripts/compare-fingerprints.ts \
+            ../base-fingerprints.json \
+            head-fingerprints.json \
+            --format json \
+            --output comparison-result.json
+      
+      # Post PR comment
+      - name: Post PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const comparisonPath = 'head/comparison-report.md';
+            
+            let comment = '';
+            
+            if (fs.existsSync(comparisonPath)) {
+              comment = fs.readFileSync(comparisonPath, 'utf-8');
+            } else {
+              comment = '# Digest/Fingerprint Regression Report\n\n⚠️ Unable to generate comparison report.';
+            }
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(c => 
+              c.user.login === 'github-actions[bot]' && 
+              c.body.includes('Digest/Fingerprint Regression Report')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+      
+      # Upload artifacts for debugging
+      - name: Upload comparison artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-gate-artifacts
+          path: |
+            base-fingerprints.json
+            head-fingerprints.json
+            head/comparison-report.md
+            head/comparison-result.json
+            base/reports/**/*.digest.json
+            head/reports/**/*.digest.json
+          if-no-files-found: warn
+      
+      # Fail the job if regression detected
+      - name: Check for regression
+        run: |
+          cd head
+          if [ -f comparison-result.json ]; then
+            REGRESSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('comparison-result.json')).summary.regressionDetected)")
+            if [ "$REGRESSION" = "true" ]; then
+              echo "❌ Regression detected! New failure fingerprints found."
+              exit 1
+            else
+              echo "✅ No regression detected."
+              exit 0
+            fi
+          else
+            echo "⚠️ Comparison result not found, failing as precaution"
+            exit 1
+          fi
