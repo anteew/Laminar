@@ -7,6 +7,9 @@ import { ingestJUnit } from './ingest-junit.js';
 import { DigestDiffEngine } from '../src/digest/diff.js';
 import { bundleRepro } from './repro-bundle.js';
 import { scaffold, printScaffoldPreview } from '../src/init/scaffold.js';
+import * as path from 'node:path';
+import { resolveContext, resolveReportsAbsolute, } from '../src/config/resolve.js';
+import { listProjects, getProject, registerProject, removeProject, deriveIdFromRoot, } from '../src/project/registry.js';
 function sh(cmd, args, env = {}) {
     const res = spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
     return res.status ?? 0;
@@ -18,7 +21,9 @@ Stream-based test execution and failure analysis toolkit
 
 USAGE
   lam <command> [options]
-  npx lam <command> [options]
+  npm exec lam <command> [options]
+  # If not installed locally (private scope):
+  npx -p @agent_vega/laminar lam <command> [options]
 
 CONFIGURATION
   init [--template <t>] [--dry-run] [--force]
@@ -26,16 +31,21 @@ CONFIGURATION
                                             --template: node-defaults (default), go-defaults, minimal
                                             --dry-run: Preview without writing files
                                             --force: Overwrite existing config
+  project <list|show|register|remove>       Manage home-scoped project registry (~/.laminar/registry.json)
+                                            register: --root <path> [--id <id>] [--config <path>] [--reports <dir>] [--history <path>]
 
 TEST EXECUTION
-  run [--lane ci|pty|auto] [--filter <p>]  Run tests with Laminar instrumentation
+  run [--project <id>] [--root <path>]     Run tests with Laminar instrumentation
+      [--lane ci|pty|auto] [--filter <p>]  
                                             --lane: execution mode (auto=smart detection)
                                             --filter: test name pattern (uses vitest -t flag)
 
 ANALYSIS & REPORTING
-  summary [--hints]                         Show test results summary from last run
+  summary [--project <id>] [--reports <dir>] [--hints]
+                                            Show test results summary from last run
                                             --hints: Show triage hints for failures (OR with LAMINAR_HINTS=1)
-  show --case <suite/case>                  Display detailed logs for a specific test case
+  show --case <suite/case> [--project <id>] [--reports <dir>]
+                                            Display detailed logs for a specific test case
        [--around <pattern>]                 Context pattern to search for (default: assert.fail)
        [--window <n>]                       Lines of context around pattern (default: 50)
   digest [--cases <case1,case2,...>]        Generate failure digests for test cases
@@ -43,7 +53,8 @@ ANALYSIS & REPORTING
   diff <digest1> <digest2>                  Compare two digest files
        [--output <path>]                    Save comparison to file
        [--format json|markdown]             Output format (default: json)
-  trends [--since <ts>] [--until <ts>]      Show failure trends over time
+  trends [--project <id>] [--history <path>] [--since <ts>] [--until <ts>]
+                                            Show failure trends over time
          [--top <n>]                        Number of top offenders to display (default: 10)
 
 DEBUGGING
@@ -65,9 +76,9 @@ CONFIGURATION MANAGEMENT
 
 EXAMPLES
   # Quick start
-  npx lam init                              # Initialize Laminar with node-defaults template
-  npx lam init --dry-run                    # Preview config without creating
-  npx lam init --template go-defaults       # Initialize for Go projects
+  npm exec lam init                         # Initialize Laminar with node-defaults template
+  npm exec lam init --dry-run               # Preview config without creating
+  npm exec lam init --template go-defaults  # Initialize for Go projects
   lam run --lane auto                       # Run tests with auto-detection
   lam summary                               # View results
 
@@ -98,8 +109,8 @@ LEARN MORE
   Report issues: https://github.com/anteew/mkolbol/issues
 `);
 }
-function readSummary() {
-    const indexPath = 'reports/index.json';
+function readSummary(reportsDir) {
+    const indexPath = path.join(reportsDir, 'index.json');
     if (fs.existsSync(indexPath)) {
         try {
             const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
@@ -109,7 +120,7 @@ function readSummary() {
             console.error('Failed to parse index.json, falling back to summary.jsonl');
         }
     }
-    const p = 'reports/summary.jsonl';
+    const p = path.join(reportsDir, 'summary.jsonl');
     if (!fs.existsSync(p))
         return [];
     return fs.readFileSync(p, 'utf-8').trim().split(/\n+/).map(l => { try {
@@ -119,8 +130,8 @@ function readSummary() {
         return undefined;
     } }).filter(Boolean);
 }
-function findTestInIndex(caseId) {
-    const indexPath = 'reports/index.json';
+function findTestInIndex(caseId, reportsDir) {
+    const indexPath = path.join(reportsDir, 'index.json');
     if (!fs.existsSync(indexPath))
         return null;
     try {
@@ -184,6 +195,67 @@ async function main() {
         }
     }
     switch (cmd) {
+        case 'project': {
+            const sub = rest[0];
+            const get = (k) => args.get(k);
+            if (sub === 'list') {
+                const projects = listProjects();
+                if (!projects.length) {
+                    console.log('No projects registered. Use: lam project register --root <path> [--id <id>]');
+                    break;
+                }
+                for (const p of projects) {
+                    console.log(`${p.id} -> root=${p.root} config=${p.configPath ?? '(auto)'} reports=${p.reportsDir ?? 'reports'} history=${p.historyPath ?? 'reports/history.jsonl'}`);
+                }
+            }
+            else if (sub === 'show') {
+                const id = get('id') || rest[1];
+                if (!id) {
+                    console.error('lam project show --id <id>');
+                    process.exit(1);
+                }
+                const p = getProject(id);
+                if (!p) {
+                    console.error(`Project not found: ${id}`);
+                    process.exit(1);
+                }
+                console.log(JSON.stringify(p, null, 2));
+            }
+            else if (sub === 'register') {
+                const rootArg = get('root');
+                if (!rootArg) {
+                    console.error('lam project register --root <path> [--id <id>] [--config <path>] [--reports <dir>] [--history <path>]');
+                    process.exit(1);
+                }
+                const rootAbs = path.isAbsolute(rootArg) ? rootArg : path.resolve(rootArg);
+                const id = get('id') || deriveIdFromRoot(rootAbs);
+                const rec = {
+                    id,
+                    root: rootAbs,
+                    configPath: get('config'),
+                    reportsDir: get('reports'),
+                    historyPath: get('history'),
+                };
+                registerProject(rec);
+                console.log(`Registered project '${id}' -> ${rootAbs}`);
+            }
+            else if (sub === 'remove') {
+                const id = get('id') || rest[1];
+                if (!id) {
+                    console.error('lam project remove --id <id>');
+                    process.exit(1);
+                }
+                if (removeProject(id))
+                    console.log(`Removed project '${id}'`);
+                else
+                    console.log(`No such project '${id}'`);
+            }
+            else {
+                console.error('lam project <list|show|register|remove>');
+                process.exit(1);
+            }
+            break;
+        }
         case 'init': {
             const template = args.get('template') || 'node-defaults';
             const dryRun = args.get('dry-run') === true || args.get('dryrun') === true;
@@ -204,7 +276,18 @@ async function main() {
             break;
         }
         case 'run': {
-            const lane = args.get('lane') || 'auto';
+            const ctx = resolveContext({
+                project: args.get('project'),
+                root: args.get('root'),
+                config: args.get('config'),
+                reports: args.get('reports'),
+                history: args.get('history'),
+                lane: args.get('lane'),
+            });
+            for (const w of ctx.warnings)
+                console.error(w);
+            process.chdir(ctx.root);
+            const lane = ctx.lane || args.get('lane') || 'auto';
             const filter = args.get('filter');
             if (lane === 'auto') {
                 if (filter) {
@@ -235,7 +318,17 @@ async function main() {
             break;
         }
         case 'summary': {
-            const entries = readSummary();
+            const ctx = resolveContext({
+                project: args.get('project'),
+                root: args.get('root'),
+                config: args.get('config'),
+                reports: args.get('reports'),
+                history: args.get('history'),
+            });
+            for (const w of ctx.warnings)
+                console.error(w);
+            const reportsAbs = resolveReportsAbsolute(ctx.root, ctx.reportsDir);
+            const entries = readSummary(reportsAbs);
             if (!entries.length) {
                 console.log('No summary found. Run `lam run` first.');
                 break;
@@ -296,8 +389,18 @@ async function main() {
             }
             const around = args.get('around') || 'assert.fail';
             const window = args.get('window') || '50';
+            const ctx = resolveContext({
+                project: args.get('project'),
+                root: args.get('root'),
+                config: args.get('config'),
+                reports: args.get('reports'),
+                history: args.get('history'),
+            });
+            for (const w of ctx.warnings)
+                console.error(w);
+            const reportsAbs = resolveReportsAbsolute(ctx.root, ctx.reportsDir);
             // Find test in index.json to get digest path and case file
-            const testEntry = findTestInIndex(caseId);
+            const testEntry = findTestInIndex(caseId, reportsAbs);
             let digestPath;
             let caseFile;
             if (testEntry?.artifacts?.caseFile) {
@@ -308,7 +411,7 @@ async function main() {
                 const parts = caseId.split('/');
                 if (parts.length === 2) {
                     const [suite, test] = parts;
-                    caseFile = `reports/${suite}/${test}.jsonl`;
+                    caseFile = path.join(reportsAbs, `${suite}/${test}.jsonl`);
                 }
             }
             // Try to find digest file
@@ -465,10 +568,18 @@ async function main() {
             break;
         }
         case 'rules': {
+            const ctx = resolveContext({
+                project: args.get('project'),
+                root: args.get('root'),
+                config: args.get('config'),
+            });
+            for (const w of ctx.warnings)
+                console.error(w);
             const sub = rest[0];
+            const cfgPath = ctx.configPath || path.join(ctx.root, 'laminar.config.json');
             if (sub === 'get') {
-                if (fs.existsSync('laminar.config.json')) {
-                    process.stdout.write(fs.readFileSync('laminar.config.json', 'utf-8'));
+                if (fs.existsSync(cfgPath)) {
+                    process.stdout.write(fs.readFileSync(cfgPath, 'utf-8'));
                 }
                 else {
                     console.log('{}');
@@ -483,8 +594,8 @@ async function main() {
                 }
                 const content = file ? fs.readFileSync(file, 'utf-8') : inline;
                 JSON.parse(content); // validate
-                fs.writeFileSync('laminar.config.json', content);
-                console.log('Updated laminar.config.json');
+                fs.writeFileSync(cfgPath, content);
+                console.log(`Updated ${cfgPath}`);
             }
             else {
                 printHelp();
@@ -493,7 +604,16 @@ async function main() {
             break;
         }
         case 'trends': {
-            const historyPath = 'reports/history.jsonl';
+            const ctx = resolveContext({
+                project: args.get('project'),
+                root: args.get('root'),
+                config: args.get('config'),
+                reports: args.get('reports'),
+                history: args.get('history'),
+            });
+            for (const w of ctx.warnings)
+                console.error(w);
+            const historyPath = path.isAbsolute(ctx.historyPath) ? ctx.historyPath : path.join(ctx.root, ctx.historyPath);
             if (!fs.existsSync(historyPath)) {
                 console.error('No history.jsonl found. Run tests first to generate failure history.');
                 process.exit(1);
