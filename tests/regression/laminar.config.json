@@ -1,0 +1,26 @@
+{
+  "budget": {
+    "kb": 10,
+    "lines": 200
+  },
+  "enabled": true,
+  "rules": [
+    {
+      "match": { "lvl": "error" },
+      "actions": [
+        { "type": "include" },
+        { "type": "codeframe", "contextLines": 2 }
+      ],
+      "priority": 10
+    },
+    {
+      "match": { "evt": "assert.fail" },
+      "actions": [
+        { "type": "include" },
+        { "type": "slice", "window": 10 },
+        { "type": "codeframe", "contextLines": 2 }
+      ],
+      "priority": 9
+    }
+  ]
+}
