@@ -62,6 +62,9 @@ lam <command> [options]
 - `trends` - Analyze failure history
 - `repro` - Get reproduction commands
 
+**Debugging**
+- `doctor` - Run installation health checks
+
 **Configuration**
 - `rules` - Manage digest rules
 
@@ -548,6 +551,70 @@ Top 10 Failures:
   3. api.spec/rate_limit_exceeded (6 occurrences)
   ...
 ```
+
+### lam doctor
+
+Run diagnostic checks on Laminar installation and configuration.
+
+```bash
+lam doctor
+```
+
+**What it does**:
+
+Runs a comprehensive health check on your Laminar installation, verifying:
+1. **Node Version** - Checks Node >= 24 is installed
+2. **PATH Configuration** - Verifies `node_modules/.bin` is accessible
+3. **Bin Symlinks** - Confirms `lam` and `laminar-mcp` binaries are linked
+4. **Dist Directory** - Validates all required distribution files are present
+5. **Reporter File** - Ensures the Vitest reporter is available
+6. **Laminar Config** - Checks for valid `laminar.config.json`
+
+**Exit Codes**:
+- `0` - All checks passed or only non-critical issues found
+- `1` - Critical issues detected that prevent Laminar from functioning
+
+**Examples**:
+
+```bash
+# Run health check
+lam doctor
+```
+
+**Sample Output**:
+
+```
+=== Laminar Doctor: Installation Health Check ===
+
+✓ Node Version: PASS
+  Node v24.0.0 detected (>= 24 required)
+
+✓ PATH Configuration: PASS
+  node_modules/.bin is in PATH
+
+✓ Bin Symlinks: PASS
+  All bin symlinks present (lam, laminar-mcp)
+
+✓ Dist Directory: PASS
+  All required dist files present
+
+✓ Reporter File: PASS
+  Reporter found at node_modules/@agent_vega/laminar/dist/src/test/reporter/jsonlReporter.js
+
+✗ Laminar Config: FAIL
+  laminar.config.json not found
+  Fix: Initialize Laminar: npx lam init
+
+Summary: 5 passed, 1 failed
+
+⚠️  Some non-critical issues detected. Laminar may work but some features might be limited.
+```
+
+**When to use**:
+- After installing Laminar for the first time
+- When encountering unexpected errors
+- Before reporting issues
+- To verify installation in CI/CD environments
 
 ### lam repro
 
