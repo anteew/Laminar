@@ -48,7 +48,7 @@ npm install -D github:anteew/Laminar#v0.1.7
 npm install -D github:anteew/Laminar#299aed8
 ```
 
-This downloads the repo, runs `npm install && npm run build` automatically, and installs the built package.
+This downloads the repo and installs it with pre-built files included in the repository.
 
 ## CLI Usage
 

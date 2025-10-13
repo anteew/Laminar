@@ -10,6 +10,7 @@ import { scaffold, printScaffoldPreview } from '../src/init/scaffold.js';
 import * as path from 'node:path';
 import { resolveContext, resolveReportsAbsolute, } from '../src/config/resolve.js';
 import { listProjects, getProject, registerProject, removeProject, deriveIdFromRoot, } from '../src/project/registry.js';
+import { logUsage } from '../src/utils/logger.js';
 function sh(cmd, args, env = {}) {
     const res = spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
     return res.status ?? 0;
@@ -194,6 +195,7 @@ async function main() {
             args.set(k, v);
         }
     }
+    logUsage('cli', cmd || 'help', Object.fromEntries(args));
     switch (cmd) {
         case 'project': {
             const sub = rest[0];
