@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/anteew/Laminar/docs/schema/laminar.config.schema.json",
+  "title": "Laminar Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "enabled": { "type": "boolean", "default": true, "description": "Enable/disable digest generation." },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kb": { "type": "number", "minimum": 1, "default": 10, "description": "Approx. kilobyte budget for digest events." },
+        "lines": { "type": "integer", "minimum": 1, "default": 200, "description": "Maximum number of events considered before trimming." }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "match": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "evt": { "anyOf": [ {"type": "string"}, {"type": "array", "items": {"type": "string"}} ] },
+              "lvl": { "anyOf": [ {"type": "string"}, {"type": "array", "items": {"type": "string"}} ] },
+              "phase": { "anyOf": [ {"type": "string"}, {"type": "array", "items": {"type": "string"}} ] },
+              "case": { "anyOf": [ {"type": "string"}, {"type": "array", "items": {"type": "string"}} ] },
+              "path": { "anyOf": [ {"type": "string"}, {"type": "array", "items": {"type": "string"}} ] }
+            }
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "oneOf": [
+                { "properties": { "type": {"const": "include"} }, "required": ["type"], "additionalProperties": false },
+                { "properties": { "type": {"const": "slice"}, "window": {"type": "integer", "minimum": 1 } }, "required": ["type", "window"], "additionalProperties": false },
+                { "properties": { "type": {"const": "redact"}, "field": {"anyOf": [ {"type":"string"}, {"type":"array", "items": {"type":"string"}} ] } }, "required": ["type", "field"], "additionalProperties": false },
+                { "properties": { "type": {"const": "codeframe"}, "contextLines": {"type": "integer", "minimum": 0 } }, "required": ["type"], "additionalProperties": false }
+              ]
+            }
+          },
+          "priority": { "type": "number", "description": "Higher runs first." }
+        },
+        "required": ["match", "actions"]
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "secrets": { "type": "boolean", "default": true },
+        "optOut": { "type": "boolean", "default": false, "description": "Force redactions off even if other flags are true." }
+      }
+    }
+  }
+}
+

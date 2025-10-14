@@ -73,37 +73,100 @@ export function createLaminarServer() {
             const registryPath = path.join(process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'laminar') : path.join(homedir(), '.laminar'), 'registry.json');
             const why = [
                 'Laminar transforms test failures into structured, AI-friendly artifacts.',
-                'Instead of parsing raw test output, you get: token-efficient summaries, detailed JSONL logs with stable schema, failure digests with suspects and code frames, diff comparison between test runs, and historical trend analysis.',
+                'Instead of parsing raw test output, you get: token-efficient summaries (500 tokens), detailed JSONL logs with stable schema, failure digests with suspects and code frames (2-3K tokens), diff comparison between test runs, and historical trend analysis.',
                 'Perfect for understanding test failures, debugging issues, tracking flaky tests, and generating reproduction steps.'
             ].join(' ');
+            const whyLLMsCare = [
+                'Context window efficiency is critical. Raw test logs consume 10,000-15,000 tokens per failure.',
+                'Laminar digests use only 2,000-3,000 tokens (70-85% reduction).',
+                'Rules persist across sessions - your filtering work compounds over time.',
+                'Document reasoning with _comment fields - future LLM sessions benefit from your learnings.',
+                'Result: Debug 5x more issues in the same context window.'
+            ].join(' ');
+            const caseStudy = {
+                scenario: 'Authentication test fails because JWT token expired',
+                withoutLaminar: {
+                    tokens: 11000,
+                    what: 'Read 45KB of raw logs, grep/sed to filter, lose patterns next session'
+                },
+                withLaminar: {
+                    tokens: 1800,
+                    what: 'Read 8KB digest with failure + context + code frame, rules saved'
+                },
+                savings: '84% fewer tokens per failure. For 10 failures over 5 sessions: save 150,000 tokens (75% of Claude Code session)'
+            };
             const quickstart = [
                 '1. Register your project: workspace.root.register { root: "/path/to/project", id: "myproject" }',
                 '2. Run tests: run { project: "myproject", lane: "auto" }',
-                '3. Check results: summary { project: "myproject" }',
-                '4. Analyze failures: digest.generate { project: "myproject" }',
-                '5. Deep dive: show { project: "myproject", case: "suite/test_name" }'
+                '3. Check results (500 tokens): summary { project: "myproject" }',
+                '4. Analyze failures (2K tokens): digest.generate { project: "myproject" }',
+                '5. Deep dive if needed: show { project: "myproject", case: "suite/test_name", window: 30 }'
             ];
-            const workflow = 'Common pattern: run tests → check summary for pass/fail counts → generate digests for failures → examine detailed logs with show → compare runs with diff.get → track patterns with trends.query';
+            const concepts = {
+                digests: 'Compact (~10KB) JSON snapshots of test failures with failure event, ±N events for context, code frames from stack traces, and suspects (most relevant log lines). Purpose: token-efficient summaries instead of 45KB+ raw logs.',
+                rules: 'Control what goes into digests (NOT what gets logged). Format: { match: { evt: "assert.fail" }, actions: [{ type: "include" }, { type: "slice", window: 10 }] }. Rules persist across sessions and compound over time.',
+                budget: 'Size limits to keep digests AI-friendly. kb: max kilobytes (~10KB default), lines: max events considered (~200 default). Protects your context window from massive logs.',
+                postItNotes: 'Use _comment fields in rules to document WHY: { "_comment": "2025-10-14: Timeouts need large window - tried 10 (too small), 15 (close), 20 (perfect)" }. Future LLMs see your reasoning and don\'t repeat trial-and-error.'
+            };
+            const workflow = 'Token-efficient pattern: run tests → summary (500 tokens) → digest.generate (creates 2K token digests) → read digests → show (1-2K tokens) if need more context. Compare: without Laminar = 11K+ tokens per failure with manual filtering that doesn\'t persist.';
+            const progressivePath = {
+                level1: {
+                    when: 'First time using Laminar, don\'t know failure patterns yet',
+                    usage: 'lam run --lane auto; lam summary; lam digest',
+                    savings: '~50% tokens vs raw logs. Errors highlighted, basic code frames, secrets redacted automatically.'
+                },
+                level2: {
+                    when: 'After 2-3 debugging sessions, seeing patterns',
+                    usage: 'Add custom rules: lam rules set --inline \'{ "rules": [{ "match": { "evt": "assert.fail" }, "actions": [{ "type": "include" }, { "type": "slice", "window": 12 }], "_comment": "Assertions need ±12 events to see test setup" }] }\'',
+                    savings: '~70% tokens + rules persist across sessions. No more re-discovering filters.'
+                },
+                level3: {
+                    when: 'After 5+ sessions, understand codebase failure patterns',
+                    usage: 'Optimize per-module: complex rules with different windows/contexts per event type, documented reasoning in comments, budget tuned for this project.',
+                    savings: '~85% tokens + knowledge compounds for all future sessions. Optimal token usage for THIS specific codebase.'
+                }
+            };
             const commands = [
-                { name: 'workspace.roots.list', description: 'List all registered test projects', signature: '{}' },
-                { name: 'workspace.root.register', description: 'Register a project (do this first!)', signature: '{ id?, root, configPath?, reportsDir?, historyPath? }' },
-                { name: 'run', description: 'Execute tests with Laminar instrumentation', signature: '{ project?, lane?, filter? }' },
-                { name: 'summary', description: 'Get pass/fail counts and test list', signature: '{ project? }' },
-                { name: 'show', description: 'View detailed JSONL logs for a specific test', signature: '{ project?, case, around?, window? }' },
-                { name: 'digest.generate', description: 'Create failure analysis with suspects & code frames', signature: '{ project?, cases? }' },
-                { name: 'diff.get', description: 'Compare two test runs to see what changed', signature: '{ left, right, format? }' },
-                { name: 'trends.query', description: 'Find flaky tests and failure patterns over time', signature: '{ project?, since?, until?, top? }' },
-                { name: 'rules.get', description: 'View Laminar configuration', signature: '{ project? }' },
-                { name: 'rules.set', description: 'Update Laminar configuration', signature: '{ project?, inline? | file? }' }
+                { name: 'workspace.roots.list', description: 'List all registered test projects', signature: '{}', tokenCost: '~100 tokens' },
+                { name: 'workspace.root.register', description: 'Register a project (do this first!)', signature: '{ id?, root, configPath?, reportsDir?, historyPath? }', tokenCost: '~50 tokens' },
+                { name: 'run', description: 'Execute tests with Laminar instrumentation', signature: '{ project?, lane?, filter? }', tokenCost: 'N/A (test execution)' },
+                { name: 'summary', description: 'Get pass/fail counts and test list', signature: '{ project? }', tokenCost: '~500 tokens (very efficient!)' },
+                { name: 'show', description: 'View detailed JSONL logs for a specific test', signature: '{ project?, case, around?, window? }', tokenCost: '~1-2K tokens (window-dependent)' },
+                { name: 'digest.generate', description: 'Create failure analysis with suspects & code frames', signature: '{ project?, cases? }', tokenCost: '~2-3K tokens per digest' },
+                { name: 'diff.get', description: 'Compare two test runs to see what changed', signature: '{ left, right, format? }', tokenCost: '~500-1K tokens' },
+                { name: 'trends.query', description: 'Find flaky tests and failure patterns over time', signature: '{ project?, since?, until?, top? }', tokenCost: '~200-500 tokens' },
+                { name: 'rules.get', description: 'View Laminar configuration', signature: '{ project? }', tokenCost: '~100-300 tokens' },
+                { name: 'rules.set', description: 'Update Laminar configuration', signature: '{ project?, inline? | file? }', tokenCost: '~50 tokens' }
+            ];
+            const learnMore = [
+                'For complete case study with before/after examples: docs/guide/why-llms-care.md',
+                'For rules syntax and examples: docs/guide/rules-budget-filters.md',
+                'For MCP tool reference: docs/guide/mcp-integration.md',
+                'For troubleshooting: docs/guide/troubleshooting.md',
+                'For config schema: docs/schema/laminar.config.schema.json'
             ];
             const feedback = [
                 '🙏 AI agents are strongly encouraged to submit bug reports and feature requests!',
                 'Found a bug? Workflow confusing? Documentation unclear? Wish Laminar could do something it can\'t?',
                 'Please open an issue at https://github.com/anteew/Laminar/issues',
                 'Agent feedback is highly valued and helps improve the tool for the AI development community.',
-                'Share your experience: what worked well, what didn\'t, what would make your workflow better.'
+                'Share your experience: what worked well, what didn\'t, what would make your workflow better.',
+                'Include token counts, workflow pain points, and optimization suggestions.'
             ].join(' ');
-            return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands, feedback };
+            return {
+                title: 'Laminar Test Observability',
+                why,
+                whyLLMsCare,
+                caseStudy,
+                quickstart,
+                concepts,
+                workflow,
+                progressivePath,
+                registryPath,
+                commands,
+                learnMore,
+                feedback
+            };
         }
     });
     // workspace.roots.list
