@@ -18,26 +18,29 @@ Laminar transforms your test suite into a structured, queryable knowledge base w
 # 1. Install from GitHub
 npm install -D github:anteew/Laminar
 
-# 2. Initialize configuration
+# 2. View setup instructions for MCP integration (recommended for AI agents)
+npx lam --readme
+
+# 3. Initialize configuration
 npx lam init
 
-# 3. View help
+# 4. View all available commands
 npx lam --help
 ```
 
 Once installed, use Laminar with your tests:
 
 ```bash
-# 4. Verify installation health
+# 5. Verify installation health
 npx lam doctor
 
-# 5. Run tests
+# 6. Run tests
 npx lam run --lane auto
 
-# 6. View results
+# 7. View results
 npx lam summary
 
-# 7. Analyze failures
+# 8. Analyze failures
 npx lam digest
 ```
 
@@ -84,7 +87,15 @@ Laminar provides two binaries:
 - **`lam`** - Main CLI for test execution and analysis
 - **`laminar-mcp`** - MCP (Model Context Protocol) server for AI agent integration
 
-Run the main CLI:
+### Getting Started
+
+After installation, view MCP setup instructions (for Claude Code, Claude Desktop, etc.):
+
+```bash runnable
+npx lam --readme
+```
+
+View all available commands:
 
 ```bash runnable
 npx lam --help
