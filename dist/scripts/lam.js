@@ -17,6 +17,78 @@ function sh(cmd, args, env = {}) {
     const res = spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
     return res.status ?? 0;
 }
+function printReadme() {
+    console.log(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Laminar MCP Server Setup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Laminar provides an MCP (Model Context Protocol) server that exposes test
+observability tools to AI agents like Claude Code and Claude Desktop.
+
+━━━ For Claude Code CLI (Primary) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Register Laminar as a user-scoped MCP server:
+
+   claude mcp add --scope user laminar npx laminar-mcp
+
+2. Verify it's registered:
+
+   claude mcp list
+
+3. Restart your Claude Code session:
+
+   Exit and start a new conversation - Laminar tools will be available!
+
+━━━ For Claude Desktop (Secondary) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Edit your Claude Desktop config file:
+   • macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+   • Windows: %APPDATA%\\Claude\\claude_desktop_config.json
+   • Linux: ~/.config/Claude/claude_desktop_config.json
+
+2. Add this configuration:
+   {
+     "mcpServers": {
+       "laminar": {
+         "command": "npx",
+         "args": ["laminar-mcp"]
+       }
+     }
+   }
+
+3. Restart Claude Desktop completely
+
+━━━ Available MCP Tools ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • workspace.roots.list    - List registered test projects
+  • workspace.root.register - Register a new project
+  • run                     - Execute tests
+  • summary                 - View test results
+  • show                    - Display detailed test logs
+  • digest.generate         - Analyze failures
+  • diff.get                - Compare test digests
+  • trends.query            - Track test history
+  • rules.get / rules.set   - Manage Laminar configuration
+
+━━━ Next Steps ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After MCP setup, initialize Laminar in your project:
+
+  npx lam init                  # Create laminar.config.json
+  npx lam run --lane auto       # Run your tests
+  npx lam summary               # View results
+
+━━━ Documentation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • MCP Setup Guide:    node_modules/@agent_vega/laminar/docs/mcp-setup.md
+  • MCP Integration:    node_modules/@agent_vega/laminar/docs/mcp-integration.md
+  • CLI Guide:          node_modules/@agent_vega/laminar/docs/cli-guide.md
+  • GitHub:             https://github.com/anteew/Laminar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`);
+}
 function printHelp() {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
     console.log(`Laminar CLI v${pkg.version}
@@ -24,9 +96,10 @@ Stream-based test execution and failure analysis toolkit
 
 USAGE
   lam <command> [options]
-  npm exec lam <command> [options]
-  # If not installed locally (private scope):
-  npx -p @agent_vega/laminar lam <command> [options]
+  npx lam <command> [options]
+
+SETUP
+  --readme                                  Show MCP server setup instructions for Claude Code/Desktop
 
 CONFIGURATION
   init [--template <t>] [--dry-run] [--force]
@@ -190,18 +263,28 @@ function generateHint(digest, entry) {
 async function main() {
     const [, , cmd, ...rest] = process.argv;
     const args = new Map();
-    for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
+    // Parse arguments from both cmd and rest
+    const allArgs = cmd && cmd.startsWith('--') ? [cmd, ...rest] : rest;
+    let actualCmd = cmd && !cmd.startsWith('--') ? cmd : undefined;
+    for (let i = 0; i < allArgs.length; i++) {
+        const a = allArgs[i];
         if (a.startsWith('--')) {
             const k = a.slice(2);
-            const v = rest[i + 1] && !rest[i + 1].startsWith('--') ? (rest[i + 1]) : true;
+            const v = allArgs[i + 1] && !allArgs[i + 1].startsWith('--') ? (allArgs[i + 1]) : true;
             if (v !== true)
                 i++;
             args.set(k, v);
         }
     }
-    logUsage('cli', cmd || 'help', Object.fromEntries(args));
-    switch (cmd) {
+    // Handle --readme flag
+    if (args.get('readme') === true) {
+        printReadme();
+        process.exit(0);
+    }
+    // Use actualCmd if we had one, otherwise keep original cmd for backward compat
+    const finalCmd = actualCmd || cmd;
+    logUsage('cli', finalCmd || 'help', Object.fromEntries(args));
+    switch (finalCmd) {
         case 'project': {
             const sub = rest[0];
             const get = (k) => args.get(k);
