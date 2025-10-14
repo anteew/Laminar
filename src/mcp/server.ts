@@ -69,7 +69,7 @@ export function createLaminarServer(): LaminarMcpServer {
   const server = new LaminarMcpServer();
 
   // readme.get — essential introduction for LLMs
-  server.addTool<{ } , { title: string; why: string; quickstart: string[]; workflow: string; registryPath: string; commands: { name: string; description: string; signature: string }[] }>(
+  server.addTool<{ } , { title: string; why: string; quickstart: string[]; workflow: string; registryPath: string; commands: { name: string; description: string; signature: string }[]; feedback: string }>(
     {
       name: 'readme.get',
       description: '⭐ Start here: Essential guide to Laminar test observability - what it does, why use it, and how to get started',
@@ -105,7 +105,15 @@ export function createLaminarServer(): LaminarMcpServer {
           { name: 'rules.set', description: 'Update Laminar configuration', signature: '{ project?, inline? | file? }' }
         ];
 
-        return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands };
+        const feedback = [
+          '🙏 AI agents are strongly encouraged to submit bug reports and feature requests!',
+          'Found a bug? Workflow confusing? Documentation unclear? Wish Laminar could do something it can\'t?',
+          'Please open an issue at https://github.com/anteew/Laminar/issues',
+          'Agent feedback is highly valued and helps improve the tool for the AI development community.',
+          'Share your experience: what worked well, what didn\'t, what would make your workflow better.'
+        ].join(' ');
+
+        return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands, feedback };
       }
     }
   );

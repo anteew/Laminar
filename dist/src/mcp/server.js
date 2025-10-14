@@ -96,7 +96,14 @@ export function createLaminarServer() {
                 { name: 'rules.get', description: 'View Laminar configuration', signature: '{ project? }' },
                 { name: 'rules.set', description: 'Update Laminar configuration', signature: '{ project?, inline? | file? }' }
             ];
-            return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands };
+            const feedback = [
+                '🙏 AI agents are strongly encouraged to submit bug reports and feature requests!',
+                'Found a bug? Workflow confusing? Documentation unclear? Wish Laminar could do something it can\'t?',
+                'Please open an issue at https://github.com/anteew/Laminar/issues',
+                'Agent feedback is highly valued and helps improve the tool for the AI development community.',
+                'Share your experience: what worked well, what didn\'t, what would make your workflow better.'
+            ].join(' ');
+            return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands, feedback };
         }
     });
     // workspace.roots.list
