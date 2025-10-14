@@ -1,0 +1,74 @@
+name: E2E Install Tests
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    name: E2E Tests (${{ matrix.os }}, ${{ matrix.test-mode }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        test-mode: [local, script]
+        node: [24]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Build Laminar
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run E2E Tests (${{ matrix.test-mode }})
+        env:
+          TEST_MODE: ${{ matrix.test-mode }}
+        run: bash tests/e2e/install-test.sh
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-${{ matrix.os }}-${{ matrix.test-mode }}-node${{ matrix.node }}
+          path: |
+            /tmp/laminar-e2e-test-*/
+            /tmp/laminar-e2e-test-*/*.log
+            /tmp/laminar-e2e-test-*/reports/
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # Separate job that documents the known broken path
+  document-npm-global-bug:
+    name: Document npm -g Bug
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build Laminar
+        run: |
+          npm ci
+          npm run build
+
+      - name: Document broken global install
+        env:
+          TEST_MODE: global
+        run: |
+          bash tests/e2e/install-test.sh
+          echo "✓ npm install -g bug is documented in test output"
