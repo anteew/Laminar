@@ -189,7 +189,7 @@ export function createLaminarServer(): LaminarMcpServer {
         const filter = input.filter;
         const sh = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 0;
         if (lane === 'auto') {
-          if (filter) { sh('vitest', ['run', '--pool=threads', '--reporter=./dist/test/reporter/jsonlReporter.js', '-t', filter]); sh('npm', ['run','laminar:run']); }
+          if (filter) { sh('vitest', ['run', '--pool=threads', '--reporter=./dist/src/test/reporter/jsonlReporter.js', '-t', filter]); sh('npm', ['run','laminar:run']); }
           else { sh('npm', ['run','laminar:run']); }
         } else if (lane === 'ci') {
           const a = ['run','test:ci']; if (filter) a.push('--','-t', filter); sh('npm', a);

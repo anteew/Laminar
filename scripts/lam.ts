@@ -391,7 +391,7 @@ async function main() {
       if (lane === 'auto') {
         if (filter) {
           // auto with filter: run threaded, then debug rerun single file
-          sh('vitest', ['run', '--pool=threads', '--reporter=./dist/test/reporter/jsonlReporter.js', '-t', filter]);
+          sh('vitest', ['run', '--pool=threads', '--reporter=./dist/src/test/reporter/jsonlReporter.js', '-t', filter]);
           sh('npm', ['run','laminar:run']);
         } else {
           sh('npm', ['run','laminar:run']);

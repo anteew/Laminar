@@ -169,7 +169,7 @@ export function createLaminarServer() {
             const sh = (cmd, args) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 0;
             if (lane === 'auto') {
                 if (filter) {
-                    sh('vitest', ['run', '--pool=threads', '--reporter=./dist/test/reporter/jsonlReporter.js', '-t', filter]);
+                    sh('vitest', ['run', '--pool=threads', '--reporter=./dist/src/test/reporter/jsonlReporter.js', '-t', filter]);
                     sh('npm', ['run', 'laminar:run']);
                 }
                 else {
