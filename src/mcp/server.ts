@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { resolveContext, resolveReportsAbsolute } from '../config/resolve.js';
 import { listProjects, registerProject, removeProject, getProject, deriveIdFromRoot } from '../project/registry.js';
@@ -67,30 +68,44 @@ function findTestInIndex(caseId: string, reportsAbs: string): any | null {
 export function createLaminarServer(): LaminarMcpServer {
   const server = new LaminarMcpServer();
 
-  // readme.get — compact overview for LLMs
-  server.addTool<{ } , { title: string; overview: string; registryPath: string; commands: string[] }>(
+  // readme.get — essential introduction for LLMs
+  server.addTool<{ } , { title: string; why: string; quickstart: string[]; workflow: string; registryPath: string; commands: { name: string; description: string; signature: string }[] }>(
     {
       name: 'readme.get',
-      description: 'Return a compact overview of Laminar MCP usage and registry layout',
+      description: '⭐ Start here: Essential guide to Laminar test observability - what it does, why use it, and how to get started',
       handler: async () => {
-        const registryPath = path.join(process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'laminar') : path.join(require('node:os').homedir(), '.laminar'), 'registry.json');
-        const overview = [
-          'Laminar: agent-first test observability.',
-          'Use project aliases instead of full paths; registry lives at ~/.laminar/registry.json.',
-          'Core flow: run → summary → show/digest/trends. All tools accept {project}|{root,config,reports,history}.',
+        const registryPath = path.join(process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'laminar') : path.join(homedir(), '.laminar'), 'registry.json');
+
+        const why = [
+          'Laminar transforms test failures into structured, AI-friendly artifacts.',
+          'Instead of parsing raw test output, you get: token-efficient summaries, detailed JSONL logs with stable schema, failure digests with suspects and code frames, diff comparison between test runs, and historical trend analysis.',
+          'Perfect for understanding test failures, debugging issues, tracking flaky tests, and generating reproduction steps.'
         ].join(' ');
-        const commands = [
-          'workspace.roots.list',
-          'workspace.root.register { id, root, configPath?, reportsDir?, historyPath? }',
-          'run { project?, lane?, filter? }',
-          'summary { project? }',
-          'show { project?, case, around?, window? }',
-          'digest.generate { project?, cases? }',
-          'diff.get { project?, left, right, format? }',
-          'trends.query { project?, since?, until?, top? }',
-          'rules.get { project? } / rules.set { project?, inline? | file? }',
+
+        const quickstart = [
+          '1. Register your project: workspace.root.register { root: "/path/to/project", id: "myproject" }',
+          '2. Run tests: run { project: "myproject", lane: "auto" }',
+          '3. Check results: summary { project: "myproject" }',
+          '4. Analyze failures: digest.generate { project: "myproject" }',
+          '5. Deep dive: show { project: "myproject", case: "suite/test_name" }'
         ];
-        return { title: 'Laminar MCP', overview, registryPath, commands };
+
+        const workflow = 'Common pattern: run tests → check summary for pass/fail counts → generate digests for failures → examine detailed logs with show → compare runs with diff.get → track patterns with trends.query';
+
+        const commands = [
+          { name: 'workspace.roots.list', description: 'List all registered test projects', signature: '{}' },
+          { name: 'workspace.root.register', description: 'Register a project (do this first!)', signature: '{ id?, root, configPath?, reportsDir?, historyPath? }' },
+          { name: 'run', description: 'Execute tests with Laminar instrumentation', signature: '{ project?, lane?, filter? }' },
+          { name: 'summary', description: 'Get pass/fail counts and test list', signature: '{ project? }' },
+          { name: 'show', description: 'View detailed JSONL logs for a specific test', signature: '{ project?, case, around?, window? }' },
+          { name: 'digest.generate', description: 'Create failure analysis with suspects & code frames', signature: '{ project?, cases? }' },
+          { name: 'diff.get', description: 'Compare two test runs to see what changed', signature: '{ left, right, format? }' },
+          { name: 'trends.query', description: 'Find flaky tests and failure patterns over time', signature: '{ project?, since?, until?, top? }' },
+          { name: 'rules.get', description: 'View Laminar configuration', signature: '{ project? }' },
+          { name: 'rules.set', description: 'Update Laminar configuration', signature: '{ project?, inline? | file? }' }
+        ];
+
+        return { title: 'Laminar Test Observability', why, quickstart, workflow, registryPath, commands };
       }
     }
   );
