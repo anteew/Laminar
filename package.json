@@ -1,6 +1,6 @@
 {
   "name": "@agent_vega/laminar",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Agent-first test observability: JSONL artifacts, digests, hints, trends, diff/repro, cross-language ingest.",
   "type": "module",
   "license": "MIT",
