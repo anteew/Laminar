@@ -36,9 +36,20 @@ npm install -g "$TARBALL"
 echo ""
 echo "✅ Installation complete!"
 echo ""
-echo "Test your installation:"
-echo "  lam --help"
-echo "  laminar-mcp --help"
-echo ""
-echo "To uninstall:"
-echo "  npm uninstall -g @agent_vega/laminar"
+
+# Show post-install instructions
+# Try to run from installed location first, fall back to local script
+if command -v laminar-mcp &> /dev/null; then
+    # Find the installation directory
+    INSTALL_DIR=$(npm root -g)/laminar
+    if [ -f "$INSTALL_DIR/dist/scripts/post-install-msg.js" ]; then
+        node "$INSTALL_DIR/dist/scripts/post-install-msg.js"
+    else
+        # Fallback: download and display from GitHub
+        curl -sL https://raw.githubusercontent.com/anteew/Laminar/main/scripts/post-install-msg.js | node
+    fi
+else
+    echo "⚠️  Installation may not be complete. Try running:"
+    echo "  lam --help"
+    echo "  laminar-mcp --help"
+fi
