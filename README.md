@@ -62,8 +62,18 @@ npm install -D @agent_vega/laminar
 ```
 
 3) Global (optional)
+
+**⚠️ Known Issue**: `npm install -g github:anteew/Laminar` is currently broken due to [npm bug with global GitHub installs](https://github.com/npm/cli/issues). npm creates symlinks to incomplete cache directories.
+
+**Workaround** - Use our installation script:
 ```bash
-npm install -g github:anteew/Laminar
+curl -fsSL https://raw.githubusercontent.com/anteew/Laminar/main/install-global.sh | bash
+```
+
+Or install locally and use `npx`:
+```bash
+npm install -D github:anteew/Laminar
+npx lam --help  # Works everywhere
 ```
 
 The repository includes pre-built dist files so no postinstall build is required.
