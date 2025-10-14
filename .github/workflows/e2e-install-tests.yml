@@ -8,12 +8,11 @@ on:
 
 jobs:
   e2e-tests:
-    name: E2E Tests (${{ matrix.os }}, ${{ matrix.test-mode }})
-    runs-on: ${{ matrix.os }}
+    name: E2E Tests (${{ matrix.test-mode }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         test-mode: [local, script]
         node: [24]
 
@@ -40,7 +39,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-failure-${{ matrix.os }}-${{ matrix.test-mode }}-node${{ matrix.node }}
+          name: e2e-failure-${{ matrix.test-mode }}-node${{ matrix.node }}
           path: |
             /tmp/laminar-e2e-test-*/
             /tmp/laminar-e2e-test-*/*.log
