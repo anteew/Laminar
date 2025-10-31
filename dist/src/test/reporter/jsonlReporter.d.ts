@@ -10,6 +10,7 @@ export default class JSONLReporter implements Reporter {
     private environment;
     private testSeed;
     private pendingWrites;
+    private pendingCaseWrites;
     constructor();
     private captureEnvironment;
     onInit(ctx: Vitest): void;

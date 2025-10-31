@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 export default class JSONLReporter {
@@ -12,6 +13,7 @@ export default class JSONLReporter {
     environment;
     testSeed;
     pendingWrites = [];
+    pendingCaseWrites = [];
     constructor() {
         // Fixed seed for determinism (can be overridden via env var)
         this.testSeed = process.env.TEST_SEED
@@ -65,6 +67,9 @@ export default class JSONLReporter {
         // Wait for all pending writes to complete
         await Promise.all(this.pendingWrites);
         this.pendingWrites = [];
+        // Wait for all per-case async writes to complete
+        await Promise.all(this.pendingCaseWrites);
+        this.pendingCaseWrites = [];
         // Close all per-case streams first and wait for them
         const caseStreamPromises = [];
         for (const stream of this.caseStreams.values()) {
@@ -141,8 +146,9 @@ export default class JSONLReporter {
         const suiteName = file ? path.basename(file.filepath, path.extname(file.filepath)) : 'unknown';
         const caseName = task.name.replace(/[^a-zA-Z0-9-_]/g, '_');
         const artifactURI = `reports/${suiteName}/${caseName}.jsonl`;
-        // Write per-case JSONL file with test lifecycle events
-        this.writePerCaseJSONL(artifactURI, task.name, state, duration, result.errors);
+        // Write per-case JSONL file with test lifecycle events (async now)
+        const writePromise = this.writePerCaseJSONL(artifactURI, task.name, state, duration, result.errors);
+        this.pendingCaseWrites.push(writePromise);
         const summary = {
             status: state,
             duration,
@@ -169,9 +175,9 @@ export default class JSONLReporter {
             },
         });
     }
-    writePerCaseJSONL(artifactPath, caseName, state, duration, errors) {
+    async writePerCaseJSONL(artifactPath, caseName, state, duration, errors) {
         const dir = path.dirname(artifactPath);
-        fs.mkdirSync(dir, { recursive: true });
+        await fsPromises.mkdir(dir, { recursive: true });
         const ts = Date.now();
         const events = [];
         // Build test lifecycle events
@@ -221,10 +227,10 @@ export default class JSONLReporter {
                 status: state === 'pass' ? 'passed' : state === 'fail' ? 'failed' : 'skipped'
             }
         }));
-        // Atomic write: write to temp file then rename
+        // Atomic write: write to temp file then rename (now async)
         const tempPath = `${artifactPath}.tmp`;
-        fs.writeFileSync(tempPath, events.join('\n') + '\n');
-        fs.renameSync(tempPath, artifactPath);
+        await fsPromises.writeFile(tempPath, events.join('\n') + '\n');
+        await fsPromises.rename(tempPath, artifactPath);
     }
     generateIndex() {
         const index = {

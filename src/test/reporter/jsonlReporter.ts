@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import type { File, Reporter, Task, Vitest } from 'vitest';
@@ -53,6 +54,7 @@ export default class JSONLReporter implements Reporter {
   private environment: RuntimeEnvironment;
   private testSeed: number;
   private pendingWrites: Promise<void>[] = [];
+  private pendingCaseWrites: Promise<void>[] = [];
 
   constructor() {
     // Fixed seed for determinism (can be overridden via env var)
@@ -112,11 +114,15 @@ export default class JSONLReporter implements Reporter {
     if (files) {
       this.processFiles(files);
     }
-    
+
     // Wait for all pending writes to complete
     await Promise.all(this.pendingWrites);
     this.pendingWrites = [];
-    
+
+    // Wait for all per-case async writes to complete
+    await Promise.all(this.pendingCaseWrites);
+    this.pendingCaseWrites = [];
+
     // Close all per-case streams first and wait for them
     const caseStreamPromises: Promise<void>[] = [];
     for (const stream of this.caseStreams.values()) {
@@ -129,7 +135,7 @@ export default class JSONLReporter implements Reporter {
     }
     await Promise.all(caseStreamPromises);
     this.caseStreams.clear();
-    
+
     // Close summary stream and wait for it to finish
     if (this.summaryStream) {
       await new Promise<void>((resolve, reject) => {
@@ -139,7 +145,7 @@ export default class JSONLReporter implements Reporter {
         });
       });
     }
-    
+
     // Generate index only after all streams are flushed (deterministic order: summary.jsonl → index.json)
     this.generateIndex();
   }
@@ -183,7 +189,7 @@ export default class JSONLReporter implements Reporter {
   private reportTest(task: Task): void {
     const result = task.result!;
     const state = result.state;
-    
+
     if (state !== 'pass' && state !== 'fail' && state !== 'skip') {
       return;
     }
@@ -191,19 +197,20 @@ export default class JSONLReporter implements Reporter {
     const duration = result.duration || 0;
     const file = task.file;
     const location = file ? `${file.filepath}:${task.location?.line || 0}` : 'unknown';
-    
+
     const status = state === 'pass' ? '✓' : state === 'fail' ? '✗' : '○';
     const color = state === 'pass' ? '\x1b[32m' : state === 'fail' ? '\x1b[31m' : '\x1b[33m';
     const reset = '\x1b[0m';
-    
+
     console.log(`${color}${status}${reset} ${task.name} (${duration.toFixed(0)}ms)`);
 
     const suiteName = file ? path.basename(file.filepath, path.extname(file.filepath)) : 'unknown';
     const caseName = task.name.replace(/[^a-zA-Z0-9-_]/g, '_');
     const artifactURI = `reports/${suiteName}/${caseName}.jsonl`;
 
-    // Write per-case JSONL file with test lifecycle events
-    this.writePerCaseJSONL(artifactURI, task.name, state, duration, result.errors);
+    // Write per-case JSONL file with test lifecycle events (async now)
+    const writePromise = this.writePerCaseJSONL(artifactURI, task.name, state, duration, result.errors);
+    this.pendingCaseWrites.push(writePromise);
 
     const summary: TestSummary = {
       status: state,
@@ -221,7 +228,7 @@ export default class JSONLReporter implements Reporter {
 
     const suitePath = file ? path.basename(file.filepath, path.extname(file.filepath)) : 'unknown';
     const digestPath = `reports/${suitePath}/digest.jsonl`;
-    
+
     this.indexEntries.push({
       testName: task.name,
       status: state,
@@ -236,15 +243,15 @@ export default class JSONLReporter implements Reporter {
     });
   }
 
-  private writePerCaseJSONL(
+  private async writePerCaseJSONL(
     artifactPath: string,
     caseName: string,
     state: 'pass' | 'fail' | 'skip',
     duration: number,
     errors?: any[]
-  ): void {
+  ): Promise<void> {
     const dir = path.dirname(artifactPath);
-    fs.mkdirSync(dir, { recursive: true });
+    await fsPromises.mkdir(dir, { recursive: true });
 
     const ts = Date.now();
     const events: string[] = [];
@@ -300,10 +307,10 @@ export default class JSONLReporter implements Reporter {
       }
     }));
 
-    // Atomic write: write to temp file then rename
+    // Atomic write: write to temp file then rename (now async)
     const tempPath = `${artifactPath}.tmp`;
-    fs.writeFileSync(tempPath, events.join('\n') + '\n');
-    fs.renameSync(tempPath, artifactPath);
+    await fsPromises.writeFile(tempPath, events.join('\n') + '\n');
+    await fsPromises.rename(tempPath, artifactPath);
   }
 
   private generateIndex(): void {
